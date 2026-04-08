@@ -1,0 +1,8 @@
+#!/bin/bash
+# Python 3.12 wrapper script
+# Usage: python --version, python script.py, python -m pip install X, etc.
+
+PYTHON_PATH="/c/Users/Lenovo/AppData/Local/Programs/Python/Python312/python.exe"
+export PYTHONIOENCODING=utf-8
+
+exec "$PYTHON_PATH" "$@"
