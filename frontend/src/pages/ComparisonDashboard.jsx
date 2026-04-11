@@ -70,7 +70,7 @@ export default function ComparisonDashboard() {
         const results = await Promise.all(promises);
         const props = results.map(r => r.data.data || r.data).filter(Boolean);
         setComparedProperties(props);
-      } catch {}
+      } catch { }
     }
     setLoading(false);
   };
@@ -89,13 +89,13 @@ export default function ComparisonDashboard() {
 
   const radarData = comparedProperties.length > 0
     ? ['Location', 'Connectivity', 'Amenities', 'ROI'].map(label => {
-        const point = { subject: label };
-        comparedProperties.forEach((prop, i) => {
-          const scoreKey = label === 'Location' ? 'locationScore' : label === 'Connectivity' ? 'connectivityScore' : label === 'Amenities' ? 'amenitiesScore' : 'roiPotential';
-          point[`prop${i}`] = prop.aiScore?.[scoreKey] || 50;
-        });
-        return point;
-      })
+      const point = { subject: label };
+      comparedProperties.forEach((prop, i) => {
+        const scoreKey = label === 'Location' ? 'locationScore' : label === 'Connectivity' ? 'connectivityScore' : label === 'Amenities' ? 'amenitiesScore' : 'roiPotential';
+        point[`prop${i}`] = prop.aiScore?.[scoreKey] || 50;
+      });
+      return point;
+    })
     : [];
 
   const formatPrice = (p) => {
@@ -135,11 +135,10 @@ export default function ComparisonDashboard() {
               variants={fadeUp}
               custom={i}
               onClick={() => toggleId(prop._id)}
-              className={`glass-card p-4 cursor-pointer transition-all ${
-                selectedIds.includes(prop._id)
+              className={`glass-card p-4 cursor-pointer transition-all ${selectedIds.includes(prop._id)
                   ? 'border-indigo-500/40 bg-indigo-500/5'
                   : 'hover:bg-white/3'
-              }`}
+                }`}
             >
               <div className="flex items-center gap-4">
                 <div className="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0">
@@ -152,11 +151,10 @@ export default function ComparisonDashboard() {
                     <MapPin size={10} /> {prop.location?.city}
                   </div>
                 </div>
-                <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center transition-colors ${
-                  selectedIds.includes(prop._id)
+                <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center transition-colors ${selectedIds.includes(prop._id)
                     ? 'bg-indigo-500 border-indigo-500'
                     : 'border-on-surface-variant/30'
-                }`}>
+                  }`}>
                   {selectedIds.includes(prop._id) && <CheckCircle2 size={14} className="text-white" />}
                 </div>
               </div>
@@ -191,7 +189,7 @@ export default function ComparisonDashboard() {
           </div>
           <h1 className="text-xl font-bold leading-tight">Property Comparison</h1>
         </motion.div>
-        
+
         {/* Winner Banner */}
         {winner && (
           <motion.div variants={fadeUp} custom={1}

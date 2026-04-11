@@ -97,11 +97,10 @@ export default function Register() {
                 key={role}
                 type="button"
                 onClick={() => setForm(prev => ({ ...prev, role }))}
-                className={`flex-1 py-2.5 rounded-xl text-sm font-medium capitalize transition-all ${
-                  form.role === role
+                className={`flex-1 py-2.5 rounded-xl text-sm font-medium capitalize transition-all ${form.role === role
                     ? 'bg-gradient-to-r from-indigo-500/20 to-indigo-500/10 text-primary border border-indigo-500/30'
                     : 'bg-surface-container-highest text-on-surface-variant border border-transparent'
-                }`}
+                  }`}
               >
                 {role === 'buyer' ? '🏠' : '📊'} {role}
               </button>

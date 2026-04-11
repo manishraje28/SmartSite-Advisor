@@ -36,7 +36,7 @@ export default function Login() {
     setError('');
     setLoading(true);
     try {
-      const creds = role === 'buyer' 
+      const creds = role === 'buyer'
         ? { email: 'buyer@smartsite.com', password: 'password123' }
         : { email: 'seller@smartsite.com', password: 'password123' };
       const { data } = await authAPI.login(creds);
@@ -63,7 +63,7 @@ export default function Login() {
           </div>
           <h2 className="text-4xl font-extrabold mb-4 tracking-tight">Welcome Back</h2>
           <p className="text-on-surface-variant">Your AI-powered property intelligence platform awaits.</p>
-          
+
           <div className="mt-10 grid grid-cols-2 gap-3 max-w-xs mx-auto">
             {[
               { label: 'AI Matches', val: '95%' },

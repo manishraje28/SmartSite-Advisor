@@ -9,8 +9,10 @@ import {
   ArrowUpRight, ChevronRight, Sparkles, Target, Zap,
   CheckCircle2, AlertTriangle, Info, Star
 } from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, RadarChart,
-  PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
+import {
+  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, RadarChart,
+  PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar
+} from 'recharts';
 
 const fadeUp = {
   hidden: { opacity: 0, y: 20 },
@@ -89,9 +91,9 @@ export default function SellerDashboard() {
 
   const segmentData = selectedProperty?.buyerSegmentMatch
     ? Object.entries(selectedProperty.buyerSegmentMatch).map(([seg, val]) => ({
-        segment: seg.charAt(0).toUpperCase() + seg.slice(1),
-        match: typeof val === 'number' ? val : 0,
-      })).filter(s => s.match > 0)
+      segment: seg.charAt(0).toUpperCase() + seg.slice(1),
+      match: typeof val === 'number' ? val : 0,
+    })).filter(s => s.match > 0)
     : [];
 
   if (loading) {
@@ -219,9 +221,8 @@ export default function SellerDashboard() {
                     key={insight._id}
                     whileHover={{ x: 4 }}
                     onClick={() => setSelectedProperty(insight)}
-                    className={`flex items-center gap-4 p-3.5 rounded-xl cursor-pointer transition-all duration-200 ${
-                      isSelected ? 'bg-indigo-500/10 border border-indigo-500/15' : 'bg-surface-container-highest/40 hover:bg-surface-container-highest/70 border border-transparent'
-                    }`}
+                    className={`flex items-center gap-4 p-3.5 rounded-xl cursor-pointer transition-all duration-200 ${isSelected ? 'bg-indigo-500/10 border border-indigo-500/15' : 'bg-surface-container-highest/40 hover:bg-surface-container-highest/70 border border-transparent'
+                      }`}
                   >
                     <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0">
                       <img

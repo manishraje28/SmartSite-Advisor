@@ -1,327 +1,212 @@
+﻿import React from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import {
-  Sparkles, Brain, BarChart3, Shield, ArrowRight,
-  Building2, Users, TrendingUp, Zap, Target, GitCompare,
-  IndianRupee, MapPin, Star, ChevronRight
+import { 
+  Sparkles, 
+  TrendingUp, 
+  Map, 
+  ShieldCheck, 
+  LineChart, 
+  Brain, 
+  Building2,
+  Users
 } from 'lucide-react';
 
 const fadeUpVariants = {
   hidden: { opacity: 0, y: 30 },
   visible: (i = 0) => ({
-    opacity: 1, y: 0,
-    transition: { delay: i * 0.1, duration: 0.6, ease: [0.22, 1, 0.36, 1] },
+    opacity: 1, 
+    y: 0,
+    transition: { 
+      delay: i * 0.1, 
+      duration: 0.6, 
+      ease: [0.22, 1, 0.36, 1] 
+    },
   }),
 };
 
-const stats = [
-  { value: '2,500+', label: 'Properties Analyzed', icon: Building2, color: 'text-indigo-400' },
-  { value: '95%', label: 'Match Accuracy', icon: Target, color: 'text-emerald-400' },
-  { value: '₹850 Cr', label: 'Transaction Value', icon: IndianRupee, color: 'text-purple-400' },
-  { value: '12,000+', label: 'Happy Buyers', icon: Users, color: 'text-amber-400' },
-];
-
-const features = [
-  {
-    icon: Brain,
-    title: 'AI Matchmaking',
-    desc: 'Multi-agent analysis matches properties to your exact lifestyle weights — ROI, amenities, location, and more.',
-    color: 'from-indigo-500/15 to-indigo-500/5',
-    iconColor: 'text-indigo-400',
-  },
-  {
-    icon: BarChart3,
-    title: 'Seller Intelligence',
-    desc: 'AI scoring engine grades your property, suggests improvements, and tracks market demand in real-time.',
-    color: 'from-emerald-500/15 to-emerald-500/5',
-    iconColor: 'text-emerald-400',
-  },
-  {
-    icon: GitCompare,
-    title: 'Smart Comparison',
-    desc: 'Side-by-side property analysis with radar charts, AI insights, and personalized winner explanation.',
-    color: 'from-purple-500/15 to-purple-500/5',
-    iconColor: 'text-purple-400',
-  },
-  {
-    icon: Shield,
-    title: 'Explainable AI',
-    desc: 'Every recommendation comes with transparent reasoning — no black box decisions.',
-    color: 'from-amber-500/15 to-amber-500/5',
-    iconColor: 'text-amber-400',
-  },
-];
-
-const propertyShowcase = [
-  { img: '/images/property-1.png', title: 'Prestige Lakeside', location: 'Whitefield', price: '₹1.2 Cr', score: 88 },
-  { img: '/images/property-2.png', title: 'Brigade Gateway', location: 'Rajajinagar', price: '₹1.8 Cr', score: 85 },
-  { img: '/images/property-3.png', title: 'Sobha Dream Acres', location: 'Panathur', price: '₹95 L', score: 79 },
-];
-
 export default function Home() {
   return (
-    <div className="overflow-hidden">
-      {/* ── HERO ── */}
-      <section className="relative min-h-[85vh] flex items-center">
-        {/* Background Glow */}
-        <div className="absolute inset-0">
-          <div className="absolute top-20 left-1/4 w-96 h-96 bg-indigo-500/10 rounded-full blur-[120px]" />
-          <div className="absolute bottom-20 right-1/4 w-80 h-80 bg-emerald-500/8 rounded-full blur-[100px]" />
+    <div className="w-full">
+      {/* ── HERO SECTION ── */}
+      <section className="relative pt-32 pb-20 md:pt-48 md:pb-32 overflow-hidden">
+        {/* Background glow effects */}
+        <div className="absolute top-0 inset-x-0 h-full overflow-hidden -z-10">
+          <div className="absolute -top-[20%] -right-[10%] w-[50%] h-[50%] rounded-full bg-ai-indigo/10 blur-[120px] mix-blend-multiply pointer-events-none animate-float" />
+          <div className="absolute top-[20%] -left-[10%] w-[40%] h-[40%] rounded-full bg-ai-emerald/10 blur-[120px] mix-blend-multiply pointer-events-none animate-float" style={{ animationDelay: '2s' }} />
         </div>
 
-        <div className="container-app relative z-10 py-24 md:py-32">
-          <div className="max-w-3xl mx-auto text-center">
-            <motion.div variants={fadeUpVariants} custom={0} initial="hidden" animate="visible"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-500/10 border border-indigo-500/20 mb-8"
+        <div className="max-w-7xl mx-auto px-6 md:px-12 relative z-10">
+          <div className="max-w-4xl mx-auto text-center">
+            <motion.div 
+              custom={0} 
+              initial="hidden" 
+              animate="visible" 
+              variants={fadeUpVariants}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-ai-indigo/5 border border-ai-indigo/10 mb-8"
             >
-              <Sparkles size={14} className="text-indigo-400" />
-              <span className="text-xs font-medium text-indigo-300 tracking-wide">AI-Powered Real Estate Intelligence</span>
+              <Sparkles size={16} className="text-ai-indigo" />
+              <span className="text-sm font-medium text-slate-700">The First AI Ecosystem for Real Estate</span>
             </motion.div>
 
-            <motion.h1 variants={fadeUpVariants} custom={1} initial="hidden" animate="visible"
-              className="text-5xl md:text-6xl lg:text-7xl font-extrabold leading-[1.08] tracking-tight mb-8"
+            <motion.h1 
+              custom={1} 
+              initial="hidden" 
+              animate="visible" 
+              variants={fadeUpVariants}
+              className="text-5xl md:text-7xl font-extrabold text-slate-900 tracking-tight leading-[1.1] mb-8"
             >
-              <span className="text-on-surface">Make Smarter</span>
-              <br />
-              <span className="bg-gradient-to-r from-indigo-400 via-primary to-emerald-400 bg-clip-text text-transparent">
-                Property Decisions
-              </span>
+              Make <span className="ai-gradient-text">Intelligent</span> Decisions.
+              <br className="hidden md:block"/> Not Just Guesses.
             </motion.h1>
 
-            <motion.p variants={fadeUpVariants} custom={2} initial="hidden" animate="visible"
-              className="text-lg md:text-xl text-on-surface-variant max-w-xl mx-auto mb-10 leading-relaxed"
+            <motion.p 
+              custom={2} 
+              initial="hidden" 
+              animate="visible" 
+              variants={fadeUpVariants}
+              className="text-lg md:text-xl text-slate-600 mb-12 max-w-2xl mx-auto leading-relaxed"
             >
-              SmartSite uses multi-agent AI to match buyers with ideal properties 
-              and help sellers maximize their listings — with transparent, explainable reasoning.
+              SmartSite uses multi-agent AI to score ROI, Amenities, and Location. 
+              We match buyers to properties that fit their lifestyle, and help sellers maximize market value.
             </motion.p>
 
-            <motion.div variants={fadeUpVariants} custom={3} initial="hidden" animate="visible"
-              className="flex flex-col sm:flex-row gap-4 justify-center"
+            <motion.div 
+              custom={3} 
+              initial="hidden" 
+              animate="visible" 
+              variants={fadeUpVariants}
+              className="flex flex-col sm:flex-row items-center justify-center gap-4"
             >
-              <Link to="/register" className="btn-primary !px-8 !py-4 text-base flex items-center gap-2 justify-center no-underline">
-                <Sparkles size={18} />
-                Start Free
-                <ArrowRight size={16} />
-              </Link>
-              <Link to="/login" className="btn-secondary !px-8 !py-4 text-base flex items-center gap-2 justify-center no-underline">
-                Sign In
-              </Link>
+              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="w-full sm:w-auto">
+                <Link 
+                  to="/register?role=buyer" 
+                  className="flex items-center justify-center gap-2 w-full px-8 py-4 bg-slate-900 text-white rounded-full font-semibold shadow-xl shadow-slate-900/20 hover:shadow-slate-900/40 transition-all"
+                >
+                  <Sparkles size={18} /> Find My Match
+                </Link>
+              </motion.div>
+              
+              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="w-full sm:w-auto">
+                <Link 
+                  to="/register?role=seller" 
+                  className="flex items-center justify-center gap-2 w-full px-8 py-4 bg-white text-slate-900 border border-slate-200 rounded-full font-semibold shadow-sm hover:shadow-md transition-all hover:bg-slate-50"
+                >
+                  <Building2 size={18} className="text-slate-500" /> List & Score Property
+                </Link>
+              </motion.div>
             </motion.div>
           </div>
         </div>
       </section>
 
-      {/* ── STATS BAR ── */}
-      <section className="py-10 border-y border-white/5">
-        <div className="container-app">
-          <motion.div
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: '-50px' }}
-            className="grid grid-cols-2 md:grid-cols-4 gap-8"
-          >
-            {stats.map((stat, i) => (
-              <motion.div
-                key={stat.label}
-                variants={fadeUpVariants}
-                custom={i}
-                className="text-center py-2"
-              >
-                <stat.icon size={22} className={`${stat.color} mx-auto mb-3`} />
-                <div className="text-2xl md:text-3xl font-bold text-on-surface mb-1">{stat.value}</div>
-                <div className="text-xs text-on-surface-variant tracking-wide">{stat.label}</div>
-              </motion.div>
-            ))}
-          </motion.div>
-        </div>
-      </section>
-
-      {/* ── FEATURES BENTO GRID ── */}
-      <section className="py-24">
-        <div className="container-app">
-          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} className="text-center mb-16">
-            <motion.div variants={fadeUpVariants} custom={0} className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 mb-5">
-              <Zap size={12} className="text-emerald-400" />
-              <span className="text-xs font-medium text-emerald-300 tracking-wide">Why SmartSite</span>
-            </motion.div>
-            <motion.h2 variants={fadeUpVariants} custom={1} className="text-3xl md:text-4xl font-bold mb-4">
-              Intelligence at Every Step
-            </motion.h2>
-            <motion.p variants={fadeUpVariants} custom={2} className="text-on-surface-variant max-w-lg mx-auto text-lg">
-              Not just listings — an AI decision ecosystem for both sides of the market.
-            </motion.p>
-          </motion.div>
-
-          <motion.div
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            className="grid md:grid-cols-2 gap-5"
-          >
-            {features.map((f, i) => (
-              <motion.div
-                key={f.title}
-                variants={fadeUpVariants}
-                custom={i}
-                whileHover={{ scale: 1.02 }}
-                className={`glass-card p-8 bg-gradient-to-br ${f.color} hover:shadow-card-hover transition-all duration-300`}
-              >
-                <div className={`w-12 h-12 rounded-xl bg-surface-container flex items-center justify-center mb-5`}>
-                  <f.icon size={22} className={f.iconColor} />
-                </div>
-                <h3 className="text-xl font-semibold mb-3">{f.title}</h3>
-                <p className="text-sm text-on-surface-variant leading-relaxed">{f.desc}</p>
-              </motion.div>
-            ))}
-          </motion.div>
-        </div>
-      </section>
-
-      {/* ── PROPERTY SHOWCASE ── */}
-      <section className="py-24 bg-surface-container-low/30">
-        <div className="container-app">
-          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} className="text-center mb-14">
-            <motion.h2 variants={fadeUpVariants} custom={0} className="text-3xl md:text-4xl font-bold mb-4">
-              Featured Properties
-            </motion.h2>
-            <motion.p variants={fadeUpVariants} custom={1} className="text-on-surface-variant text-lg">
-              AI-scored and ranked for maximum confidence
-            </motion.p>
-          </motion.div>
-
-          <motion.div
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            className="grid md:grid-cols-3 gap-6"
-          >
-            {propertyShowcase.map((prop, i) => (
-              <motion.div
-                key={prop.title}
-                variants={fadeUpVariants}
-                custom={i}
-                whileHover={{ y: -6 }}
-                className="glass-card overflow-hidden group"
-              >
-                <div className="relative h-56 overflow-hidden">
-                  <img
-                    src={prop.img}
-                    alt={prop.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-surface via-surface/30 to-transparent" />
-                  <div className="absolute top-3 right-3 px-2.5 py-1 rounded-lg bg-emerald-500/20 backdrop-blur-sm flex items-center gap-1">
-                    <Star size={11} className="text-emerald-400" />
-                    <span className="text-xs font-bold text-emerald-400">{prop.score}</span>
-                  </div>
-                  <div className="absolute bottom-3 left-4">
-                    <div className="text-xl font-bold text-white">{prop.price}</div>
-                  </div>
-                </div>
-                <div className="p-5">
-                  <h4 className="font-semibold text-on-surface mb-1.5">{prop.title}</h4>
-                  <div className="flex items-center gap-1.5 text-sm text-on-surface-variant">
-                    <MapPin size={13} />
-                    {prop.location}
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </motion.div>
-
-          <div className="text-center mt-10">
-            <Link to="/register" className="btn-emerald !px-7 !py-3 inline-flex items-center gap-2 no-underline">
-              Explore All Properties
-              <ChevronRight size={16} />
-            </Link>
+      {/* ── BENTO GRID SECTION ── */}
+      <section className="py-24 bg-white">
+        <div className="max-w-7xl mx-auto px-6 md:px-12">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">The Construction Intelligence Ecosystem</h2>
+            <p className="text-lg text-slate-600 max-w-2xl mx-auto">A dual-sided platform bringing absolute transparency and predictive accuracy to both buyers and constructors.</p>
           </div>
-        </div>
-      </section>
 
-      {/* ── HOW IT WORKS ── */}
-      <section className="py-24">
-        <div className="container-app">
-          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} className="text-center mb-14">
-            <motion.h2 variants={fadeUpVariants} custom={0} className="text-3xl md:text-4xl font-bold mb-4">How SmartSite Works</motion.h2>
-            <motion.p variants={fadeUpVariants} custom={1} className="text-on-surface-variant text-lg">Three steps to your perfect property match</motion.p>
-          </motion.div>
-
-          <motion.div
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            className="grid md:grid-cols-3 gap-8"
-          >
-            {[
-              { step: '01', title: 'Set Your Priorities', desc: 'Tell us what matters — adjust sliders for ROI, location, amenities, and more.', icon: Target },
-              { step: '02', title: 'AI Analyzes & Matches', desc: 'Our multi-agent AI scores every property and ranks them against your weights.', icon: Brain },
-              { step: '03', title: 'Decide with Confidence', desc: 'Compare top matches side-by-side with transparent AI explanations.', icon: Sparkles },
-            ].map((item, i) => (
-              <motion.div
-                key={item.step}
-                variants={fadeUpVariants}
-                custom={i}
-                className="relative text-center px-6 py-10 glass-card bg-surface-container-low/20 overflow-hidden"
-              >
-                <div className="absolute -top-4 right-1/2 translate-x-1/2 text-[120px] font-black text-white/5 pointer-events-none select-none leading-none z-0">
-                  {item.step}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            
+            {/* Bento Box 1: Large (Span 2) */}
+            <motion.div 
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: "-100px" }}
+              variants={fadeUpVariants}
+              custom={0}
+              className="md:col-span-2 glass-card p-8 md:p-12 relative overflow-hidden group"
+            >
+              <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity duration-500">
+                <Brain size={120} className="text-ai-indigo" />
+              </div>
+              <div className="relative z-10">
+                <div className="w-12 h-12 bg-ai-indigo/10 rounded-2xl flex items-center justify-center mb-6">
+                  <Users size={24} className="text-ai-indigo" />
                 </div>
-                <div className="relative z-10 w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500/15 to-emerald-500/15 flex items-center justify-center mx-auto mb-6">
-                  <item.icon size={28} className="text-primary" />
-                </div>
-                <h4 className="relative z-10 font-bold text-on-surface text-xl mb-3">{item.title}</h4>
-                <p className="relative z-10 text-sm text-on-surface-variant leading-relaxed">{item.desc}</p>
-              </motion.div>
-            ))}
-          </motion.div>
-        </div>
-      </section>
+                <h3 className="text-2xl font-bold text-slate-900 mb-3">AI Matchmaking for Buyers</h3>
+                <p className="text-slate-600 max-w-md leading-relaxed">
+                  Input your custom lifestyle weights (e.g., 50% ROI, 30% Amenities). 
+                  Our algorithm grades every property against your priorities, giving you a 
+                  <span className="font-semibold text-ai-indigo"> Personalized Match %</span>.
+                </p>
+              </div>
+            </motion.div>
 
-      {/* ── CTA ── */}
-      <section className="py-24">
-        <div className="container-app">
-          <motion.div
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            variants={fadeUpVariants}
-            className="relative overflow-hidden rounded-3xl p-12 md:p-20 text-center bg-gradient-to-br from-indigo-500/15 via-surface-container to-emerald-500/10 border border-indigo-500/10"
-          >
-            <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-[80px]" />
-            <div className="absolute bottom-0 left-0 w-48 h-48 bg-emerald-500/8 rounded-full blur-[60px]" />
-            <div className="relative z-10">
-              <h2 className="text-3xl md:text-5xl font-bold mb-6">
-                Ready to Find Your{' '}
-                <span className="bg-gradient-to-r from-indigo-400 to-emerald-400 bg-clip-text text-transparent">
-                  Perfect Property?
-                </span>
-              </h2>
-              <p className="text-on-surface-variant max-w-md mx-auto mb-10 text-lg">
-                Join thousands of buyers and sellers using AI to make smarter real estate decisions.
+            {/* Bento Box 2: Square */}
+            <motion.div 
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: "-100px" }}
+              variants={fadeUpVariants}
+              custom={1}
+              className="glass-card p-8 relative overflow-hidden ai-glow-border group"
+            >
+              <div className="w-12 h-12 bg-ai-emerald/10 rounded-2xl flex items-center justify-center mb-6">
+                <TrendingUp size={24} className="text-ai-emerald" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 mb-3">Seller Intelligence</h3>
+              <p className="text-slate-600 leading-relaxed text-sm">
+                Constructors receive instant AI scores for their property and actionable to-do lists to boost valuation and demand.
               </p>
-              <Link to="/register" className="btn-primary !px-10 !py-4 text-base inline-flex items-center gap-2 no-underline relative z-20">
-                <Sparkles size={18} />
-                Get Started — It's Free
-              </Link>
-            </div>
-          </motion.div>
+            </motion.div>
+
+            {/* Bento Box 3: Square */}
+            <motion.div 
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: "-100px" }}
+              variants={fadeUpVariants}
+              custom={2}
+              className="glass-card p-8 group"
+            >
+              <div className="w-12 h-12 bg-amber-500/10 rounded-2xl flex items-center justify-center mb-6">
+                <Map size={24} className="text-amber-500" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 mb-3">Livability & Location</h3>
+              <p className="text-slate-600 leading-relaxed text-sm">
+                Automated analysis of neighborhood connectivity to schools, hospitals, and transit hubs via precise geospatial scoring.
+              </p>
+            </motion.div>
+
+            {/* Bento Box 4: Large Horizontal */}
+            <motion.div 
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: "-100px" }}
+              variants={fadeUpVariants}
+              custom={3}
+              className="md:col-span-2 glass-card p-8 md:p-12 flex flex-col md:flex-row items-start md:items-center justify-between gap-8 group"
+            >
+              <div className="flex-1">
+                <div className="w-12 h-12 bg-ai-purple/10 rounded-2xl flex items-center justify-center mb-6">
+                  <ShieldCheck size={24} className="text-ai-purple" />
+                </div>
+                <h3 className="text-2xl font-bold text-slate-900 mb-3">Financial & Explainable AI</h3>
+                <p className="text-slate-600 leading-relaxed">
+                  No black boxes. Every recommendation comes with clear natural language reasoning and calculated financial affordability metrics.
+                </p>
+              </div>
+              <div className="flex-shrink-0 w-full md:w-auto">
+                <div className="bg-slate-50 border border-slate-100 rounded-2xl p-6 shadow-inner">
+                  <div className="flex items-center gap-4 mb-4">
+                    <LineChart className="text-ai-indigo" size={20} />
+                    <span className="text-sm font-bold text-slate-900">AI Recommendation</span>
+                  </div>
+                   <div className="flex space-x-2">
+                    <div className="h-8 bg-slate-200 rounded w-12 overflow-hidden"><div className="h-full w-full bg-ai-indigo rounded"></div></div>
+                    <div className="h-8 bg-slate-200 rounded w-8 overflow-hidden"><div className="h-full w-full bg-ai-emerald rounded"></div></div>
+                    <div className="h-8 bg-slate-200 rounded w-16 overflow-hidden"><div className="h-full w-full bg-ai-purple rounded"></div></div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+
+          </div>
         </div>
       </section>
-
-      {/* ── FOOTER ── */}
-      <footer className="py-10 border-t border-white/5">
-        <div className="container-app text-center">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-indigo-400 flex items-center justify-center">
-              <Building2 size={15} className="text-white" />
-            </div>
-            <span className="font-bold text-on-surface text-lg">SmartSite</span>
-          </div>
-          <p className="text-sm text-on-surface-variant">
-            © 2026 SmartSite. AI-Powered Construction Intelligence Platform.
-          </p>
-        </div>
-      </footer>
     </div>
   );
 }

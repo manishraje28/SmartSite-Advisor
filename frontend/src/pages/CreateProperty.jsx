@@ -142,18 +142,16 @@ export default function CreateProperty() {
             const isDone = i < step;
             return (
               <div key={s.label} className="flex items-center gap-2.5 flex-1">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-all ${
-                  isDone ? 'bg-emerald-500/15' : isActive ? 'bg-indigo-500/15' : 'bg-surface-container-highest'
-                }`}>
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-all ${isDone ? 'bg-emerald-500/15' : isActive ? 'bg-indigo-500/15' : 'bg-surface-container-highest'
+                  }`}>
                   {isDone ? (
                     <Check size={16} className="text-emerald-400" />
                   ) : (
                     <Icon size={16} className={isActive ? 'text-primary' : 'text-on-surface-variant/50'} />
                   )}
                 </div>
-                <span className={`text-xs font-medium hidden sm:block ${
-                  isActive ? 'text-primary' : isDone ? 'text-emerald-400' : 'text-on-surface-variant/50'
-                }`}>{s.label}</span>
+                <span className={`text-xs font-medium hidden sm:block ${isActive ? 'text-primary' : isDone ? 'text-emerald-400' : 'text-on-surface-variant/50'
+                  }`}>{s.label}</span>
                 {i < STEPS.length - 1 && (
                   <div className={`flex-1 h-0.5 rounded-full mx-2 ${isDone ? 'bg-emerald-500' : 'bg-surface-container-highest'}`} />
                 )}
@@ -314,11 +312,10 @@ export default function CreateProperty() {
                     key={amenity}
                     type="button"
                     onClick={() => toggleAmenity(amenity)}
-                    className={`px-4 py-3 rounded-xl text-sm font-medium transition-all text-left ${
-                      form.amenities.includes(amenity)
+                    className={`px-4 py-3 rounded-xl text-sm font-medium transition-all text-left ${form.amenities.includes(amenity)
                         ? 'bg-indigo-500/15 text-primary border border-indigo-500/25'
                         : 'bg-surface-container-highest text-on-surface-variant hover:bg-surface-container-highest/80 border border-transparent'
-                    }`}
+                      }`}
                   >
                     {form.amenities.includes(amenity) ? '✓  ' : ''}{amenity}
                   </button>

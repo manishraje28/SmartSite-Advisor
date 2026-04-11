@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion';
+﻿import { motion } from 'framer-motion';
 
 export default function ScoreRing({ score, size = 80, strokeWidth = 6, label, sublabel }) {
   const radius = (size - strokeWidth) / 2;
@@ -15,16 +15,14 @@ export default function ScoreRing({ score, size = 80, strokeWidth = 6, label, su
     <div className="flex flex-col items-center gap-1">
       <div className="relative" style={{ width: size, height: size }}>
         <svg width={size} height={size} className="transform -rotate-90">
-          {/* Background ring */}
           <circle
             cx={size / 2}
             cy={size / 2}
             r={radius}
-            stroke="rgba(70, 69, 84, 0.2)"
+            stroke="rgba(15, 23, 42, 0.1)"
             strokeWidth={strokeWidth}
             fill="none"
           />
-          {/* Score arc */}
           <motion.circle
             cx={size / 2}
             cy={size / 2}
@@ -39,10 +37,9 @@ export default function ScoreRing({ score, size = 80, strokeWidth = 6, label, su
             transition={{ duration: 1.2, ease: 'easeOut' }}
           />
         </svg>
-        {/* Center text */}
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <motion.span
-            className="font-bold"
+            className="font-bold text-slate-900"
             style={{ fontSize: size * 0.25, color: getColor() }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -52,8 +49,8 @@ export default function ScoreRing({ score, size = 80, strokeWidth = 6, label, su
           </motion.span>
         </div>
       </div>
-      {label && <span className="text-xs font-medium text-on-surface">{label}</span>}
-      {sublabel && <span className="text-[10px] text-on-surface-variant">{sublabel}</span>}
+      {label && <span className="text-xs font-semibold text-slate-700">{label}</span>}
+      {sublabel && <span className="text-[10px] font-medium text-slate-500">{sublabel}</span>}
     </div>
   );
 }
