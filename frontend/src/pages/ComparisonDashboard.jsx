@@ -9,6 +9,7 @@ import {
   Sparkles, CheckCircle2, AlertTriangle, TrendingUp, Zap, ChevronDown
 } from 'lucide-react';
 import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, ResponsiveContainer, Legend } from 'recharts';
+import ExplainerChatbot from '../components/ui/ExplainerChatbot';
 
 const fadeUp = {
   hidden: { opacity: 0, y: 20 },
@@ -88,11 +89,11 @@ export default function ComparisonDashboard() {
   };
 
   const radarData = comparedProperties.length > 0
-    ? ['Location', 'Connectivity', 'Amenities', 'ROI'].map(label => {
+    ? ['Livability', 'Connectivity', 'Amenities', 'ROI'].map(label => {
       const point = { subject: label };
       comparedProperties.forEach((prop, i) => {
-        const scoreKey = label === 'Location' ? 'locationScore' : label === 'Connectivity' ? 'connectivityScore' : label === 'Amenities' ? 'amenitiesScore' : 'roiPotential';
-        point[`prop${i}`] = prop.aiScore?.[scoreKey] || 50;
+        const scoreKey = label === 'Livability' ? (prop.livabilityScore || prop.aiScore?.locationScore) : label === 'Connectivity' ? (prop.connectivityScore || prop.aiScore?.connectivityScore) : label === 'Amenities' ? prop.aiScore?.amenitiesScore : prop.aiScore?.roiPotential;
+        point[`prop${i}`] = scoreKey || 50;
       });
       return point;
     })
@@ -314,22 +315,23 @@ export default function ComparisonDashboard() {
                 {/* Sub Scores */}
                 <div className="space-y-4">
                   {[
-                    { label: 'Location', score: prop.aiScore?.locationScore },
-                    { label: 'Connectivity', score: prop.aiScore?.connectivityScore },
-                    { label: 'Amenities', score: prop.aiScore?.amenitiesScore },
+                    { label: 'Livability (Maps)', score: prop.livabilityScore || prop.aiScore?.locationScore },
+                    { label: 'Transit & Conn.', score: prop.connectivityScore || prop.aiScore?.connectivityScore },
+                    { label: 'Internal Amenities', score: prop.aiScore?.amenitiesScore },
                     { label: 'ROI', score: prop.aiScore?.roiPotential },
                   ].map(item => (
                     <div key={item.label}>
-                      <div className="flex justify-between text-sm mb-2">
-                        <span className="text-on-surface-variant">{item.label}</span>
-                        <span className="font-semibold">{item.score || 0}</span>
+                      <div className="flex justify-between text-sm mb-2">       
+                        <span className="text-on-surface-variant font-medium">{item.label}</span>
+                        <span className="font-semibold text-indigo-100">{item.score || 0}/100</span>
                       </div>
-                      <div className="h-2.5 rounded-full bg-surface-container-highest overflow-hidden">
+                      <div className="h-2 rounded-full bg-surface-container-highest overflow-hidden">
                         <div
-                          className="h-full rounded-full transition-all duration-700"
+                          className="h-full rounded-full transition-all duration-700 shadow-[0_0_10px_rgba(0,0,0,0.5)]"
                           style={{
                             width: `${item.score || 0}%`,
                             backgroundColor: COLORS[i],
+                            boxShadow: `0 0 10px ${COLORS[i]}80`
                           }}
                         />
                       </div>
@@ -352,7 +354,35 @@ export default function ComparisonDashboard() {
                     ))}
                   </div>
                 )}
+                {/* Neighborhood & Distances */}
+                {prop.topAmenitiesMap && prop.topAmenitiesMap.length > 0 && (
+                  <div className="pt-4 border-t border-white/5 space-y-2.5">
+                    <h5 className="text-sm font-semibold flex items-center gap-1.5 mb-2">
+                      <MapPin size={14} className="text-indigo-400" /> Neighborhood Analysis
+                    </h5>
+                    {prop.topAmenitiesMap.map((amenity, idx) => (
+                      <div key={idx} className="flex justify-between items-center text-xs bg-white/5 p-2.5 rounded-lg hover:bg-white/10 transition-colors">
+                        <div className="w-[65%]">
+                          <div className="text-on-surface font-medium truncate" title={amenity.name}>{amenity.name}</div>
+                          <div className="text-on-surface-variant text-[9px] uppercase tracking-wider mt-0.5">
+                            {amenity.type.replace('_', ' ')}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-indigo-300 font-semibold">{amenity.distanceText}</div>
+                          <div className="text-[10px] text-on-surface-variant mt-0.5">
+                            {amenity.durationText}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
+              
+              {/* Explainer AI component integrated here */}
+              <ExplainerChatbot property={prop} color={COLORS[i]} />
+
             </motion.div>
           );
         })}

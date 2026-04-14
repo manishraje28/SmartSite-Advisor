@@ -2,6 +2,9 @@ const express = require('express');
 const preferenceController = require('../controllers/preferenceController');
 const matchmakingService = require('../services/matchmakingService');
 const Property = require('../models/Property');
+const { getNearbyAmenities } = require('../services/nearbyAmenitiesService');
+const Groq = require('groq-sdk');
+const groq = process.env.GROQ_API_KEY ? new Groq({ apiKey: process.env.GROQ_API_KEY }) : null;
 
 const router = express.Router();
 
@@ -49,36 +52,50 @@ router.post('/compare', async (req, res) => {
     }
 
     const BuyerPreferences = require('../models/BuyerPreferences');
+    const { enhancePropertyWithLivability } = require('../services/nearbyAmenitiesService');
     const preferences = buyerId ? await BuyerPreferences.findOne({ user: buyerId }) : null;
 
     const properties = await Property.find({ _id: { $in: propertyIds } })
       .populate('seller', 'name email phone')
       .lean();
 
-    const compared = properties.map(property => {
+    // Limit to 4 properties so we don't bombard Google APIs
+    const propertiesToProcess = properties.slice(0, 4);
+
+    const compared = await Promise.all(propertiesToProcess.map(async property => {
+      // Fetch Google Places data and calculate new scores!
+      const enhancedProperty = await enhancePropertyWithLivability(property);
+
       const matchPercentage = preferences
-        ? matchmakingService.calculateMatchForProperty(property, preferences)
-        : (property.aiScore?.overall || 50);
+        ? matchmakingService.calculateMatchForProperty(enhancedProperty, preferences)
+        : (enhancedProperty.aiScore?.overall || 50);
 
       // Generate AI insights
       const insights = [];
-      const aiScore = property.aiScore || {};
+      const aiScore = enhancedProperty.aiScore || {};
       
-      if (aiScore.locationScore >= 80) {
-        insights.push({ type: 'positive', text: `Excellent location score (${aiScore.locationScore}/100)` });
+      // We will now include real Google Livability/Connectivity in our logic
+      const trueLivability = enhancedProperty.livabilityScore || aiScore.locationScore || 50;
+      const trueConnectivity = enhancedProperty.connectivityScore || aiScore.connectivityScore || 50;
+      
+      if (trueLivability >= 80) {
+        insights.push({ type: 'positive', text: `Excellent Livability rating (${trueLivability}/100) based on nearby amenities.` });
+      }
+      if (trueConnectivity >= 80) {
+         insights.push({ type: 'positive', text: `Great Connectivity to public transit (${trueConnectivity}/100).` });
       }
       if (aiScore.roiPotential >= 80) {
-        insights.push({ type: 'positive', text: `Strong ROI potential (${aiScore.roiPotential}/100)` });
+        insights.push({ type: 'positive', text: `Strong ROI potential (${aiScore.roiPotential}/100).` });
       }
       if (aiScore.amenitiesScore < 60) {
-        insights.push({ type: 'warning', text: `Amenities score could be improved (${aiScore.amenitiesScore}/100)` });
+        insights.push({ type: 'warning', text: `Property's internal amenities score could be improved (${aiScore.amenitiesScore}/100)` });
       }
-      if (property.price < 10000000) {
+      if (enhancedProperty.price < 10000000) {
         insights.push({ type: 'positive', text: 'Budget-friendly option' });
       }
 
-      return { ...property, matchPercentage, insights };
-    });
+      return { ...enhancedProperty, matchPercentage, insights };
+    }));
 
     // Sort by match percentage
     compared.sort((a, b) => b.matchPercentage - a.matchPercentage);
@@ -107,6 +124,63 @@ router.post('/compare', async (req, res) => {
   } catch (error) {
     console.error('Compare error:', error);
     res.status(500).json({ success: false, message: 'Failed to compare properties' });
+  }
+});
+
+// ── EXPLAINABILITY CHAT BOT ─────────────────
+router.post('/explain', async (req, res) => {
+  try {
+    const { message, propertyId, radius } = req.body;
+    
+    if (!groq) {
+      return res.status(500).json({ success: false, message: 'Groq API key not configured' });
+    }
+
+    // 1. Get the property being discussed
+    const property = await Property.findById(propertyId).lean();
+    if (!property) return res.status(404).json({ success: false, message: 'Property not found' });
+
+    const [lng, lat] = property.location.coordinates;
+    const customRadius = radius ? parseInt(radius) : 10000; // default 10km for chat
+
+    // 2. Gather raw amenities explicitly requested over custom radius for the AI
+    const amenities = await getNearbyAmenities(lat, lng, customRadius) || {};
+    
+    // Format what the AI needs to know
+    let contextStr = `Property: ${property.title}, Price: INR ${property.price}\n`;
+    contextStr += `Location: ${property.location.address}, ${property.location.city}\n`;
+    contextStr += `Current Search Radius: ${customRadius / 1000} km\n`;
+    contextStr += `Nearby Amenities Found (Top 3 per category):\n`;
+    Object.entries(amenities).forEach(([type, data]) => {
+      contextStr += `- ${type}: ${data.count} total inside radius. Top names: ${data.top.map(a=>a.name).join(', ')}\n`;
+    });
+
+    const completion = await groq.chat.completions.create({
+      messages: [
+        {
+          role: 'system',
+          content: `You are an expert Real Estate Explainability AI for "SmartSite". You look at the property context and answer the user's questions about amenities within the area (like "Are there any schools within 10km?").
+          
+          Context:\n${contextStr}\n
+          
+          IMPORTANT: Your answer must be concise, helpful, and clearly explain why this makes the location good or bad. If they requested 10kms and you see them, list them and tell them that we will plot them on the map. Keep sentences short. Use regular newlines for spacing. Do not use asterisks for bolding or complex markdown.`
+        },
+        { role: 'user', content: message }
+      ],
+      model: 'openai/gpt-oss-120b',
+    });
+
+    res.json({
+      success: true,
+      data: {
+        reply: completion.choices[0].message.content,
+        rawAmenities: amenities  // so frontend can plot them!
+      }
+    });
+
+  } catch (error) {
+    console.error('Chat error:', error);
+    res.status(500).json({ success: false, message: 'Failed to process chat' });
   }
 });
 
