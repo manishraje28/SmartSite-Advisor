@@ -77,12 +77,31 @@ router.post('/compare', async (req, res) => {
       // We will now include real Google Livability/Connectivity in our logic
       const trueLivability = enhancedProperty.livabilityScore || aiScore.locationScore || 50;
       const trueConnectivity = enhancedProperty.connectivityScore || aiScore.connectivityScore || 50;
+      const environmentScore = enhancedProperty.environmentScore || {};
       
       if (trueLivability >= 80) {
         insights.push({ type: 'positive', text: `Excellent Livability rating (${trueLivability}/100) based on nearby amenities.` });
       }
       if (trueConnectivity >= 80) {
          insights.push({ type: 'positive', text: `Great Connectivity to public transit (${trueConnectivity}/100).` });
+      }
+      if (environmentScore.overall >= 80) {
+        insights.push({
+          type: 'positive',
+          text: `Strong environmental quality (${environmentScore.overall}/100) with AQI ${environmentScore.aqi || 'N/A'}${environmentScore.aqiLabel ? ` - ${environmentScore.aqiLabel}` : ''}.`,
+        });
+      }
+      if (environmentScore.aqi >= 4) {
+        insights.push({
+          type: 'warning',
+          text: `Air quality is ${environmentScore.aqiLabel || 'poor'} (AQI ${environmentScore.aqi}) and may affect outdoor comfort.`,
+        });
+      }
+      if (environmentScore.forecast?.trend === 'Worsening') {
+        insights.push({
+          type: 'warning',
+          text: 'Air quality is expected to worsen over the next 24 hours.',
+        });
       }
       if (aiScore.roiPotential >= 80) {
         insights.push({ type: 'positive', text: `Strong ROI potential (${aiScore.roiPotential}/100).` });

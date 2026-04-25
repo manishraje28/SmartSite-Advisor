@@ -116,6 +116,28 @@ const aiScoreSchema = new mongoose.Schema(
   { _id: false }
 );
 
+// ── Sub-schema: Environmental Score (weather + air quality) ──────────────
+const environmentalScoreSchema = new mongoose.Schema(
+  {
+    overall: { type: Number, min: 0, max: 100, default: null },
+    aqi: { type: Number, min: 1, max: 5, default: null },
+    aqiLabel: { type: String, default: null },
+    airQualityScore: { type: Number, min: 0, max: 100, default: null },
+    pollutantExposureScore: { type: Number, min: 0, max: 100, default: null },
+    comfortScore: { type: Number, min: 0, max: 100, default: null },
+    trendScore: { type: Number, min: 0, max: 100, default: null },
+    trendLabel: { type: String, default: null },
+    summary: { type: String, default: null },
+    recommendations: { type: [String], default: [] },
+    pollutants: { type: mongoose.Schema.Types.Mixed, default: {} },
+    weather: { type: mongoose.Schema.Types.Mixed, default: {} },
+    forecast: { type: mongoose.Schema.Types.Mixed, default: {} },
+    source: { type: String, default: 'OpenWeatherMap' },
+    lastUpdated: { type: Date, default: null },
+  },
+  { _id: false }
+);
+
 // ── Sub-schema: Pricing Recommendation (AI-generated) ─────────────────────
 const pricingRecommendationSchema = new mongoose.Schema(
   {
@@ -250,6 +272,11 @@ const propertySchema = new mongoose.Schema(
     // ── AI Intelligence ───────────────────────────────────────────────────
     aiScore: {
       type: aiScoreSchema,
+      default: {},
+    },
+
+    environmentScore: {
+      type: environmentalScoreSchema,
       default: {},
     },
 

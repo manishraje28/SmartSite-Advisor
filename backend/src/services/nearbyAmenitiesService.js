@@ -1,6 +1,7 @@
 require('dotenv').config();
 const axios = require('axios');
 const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
+const { getEnvironmentalInsights } = require('./openWeatherService');
 
 const AMENITY_TYPES = {
   hospitals: 'hospital',
@@ -98,9 +99,22 @@ async function enhancePropertyWithLivability(property) {
   
   // GeoJSON coordinates are [longitude, latitude]
   const [lng, lat] = property.location.coordinates;
-  const amenities = await getNearbyAmenities(lat, lng);
-  
-  if (!amenities) return property;
+  const [amenities, environmentScore] = await Promise.all([
+    getNearbyAmenities(lat, lng),
+    getEnvironmentalInsights(property),
+  ]);
+
+  if (!amenities && !environmentScore) return property;
+
+  const enhancedProperty = { ...property };
+
+  if (environmentScore) {
+    enhancedProperty.environmentScore = environmentScore;
+  }
+
+  if (!amenities) {
+    return enhancedProperty;
+  }
 
   // Gather the top 1 amenity from each category to calculate distances
   const topAmenities = [];
@@ -151,7 +165,7 @@ async function enhancePropertyWithLivability(property) {
   connectivityScore = Math.min(100, Math.max(0, Math.round(connectivityScore)));
   
   return {
-    ...property,
+    ...enhancedProperty,
     realAmenities: amenities,
     topAmenitiesMap: amenitiesWithDistance,
     livabilityScore,
