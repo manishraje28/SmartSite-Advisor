@@ -52,6 +52,7 @@ export const buyerAPI = {
   updatePreferences: (data) => api.patch('/buyer/preferences', data),
   getMatches: (params) => api.get('/buyer/matches', { params }),
   compareProperties: (data) => api.post('/buyer/compare', data),
+  explainComparison: (data) => api.post('/buyer/explain', data),
 };
 
 // ── Seller API ──────────────────────────────
