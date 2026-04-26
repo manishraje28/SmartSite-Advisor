@@ -8,15 +8,20 @@ const BuyerPreferences = require('../models/BuyerPreferences');
 router.post('/register', async (req, res) => {
   try {
     const { name, email, password, role, phone } = req.body;
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+
+    if (!normalizedEmail) {
+      return res.status(400).json({ success: false, message: 'Email is required' });
+    }
 
     // Check if user already exists
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ email: normalizedEmail });
     if (existingUser) {
       return res.status(400).json({ success: false, message: 'Email already registered' });
     }
 
     // Create user
-    const user = await User.create({ name, email, password, role: role || 'buyer', phone });
+    const user = await User.create({ name, email: normalizedEmail, password, role: role || 'buyer', phone });
 
     // If buyer, create default preferences
     if (user.role === 'buyer') {
@@ -68,13 +73,14 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
+    const normalizedEmail = String(email || '').trim().toLowerCase();
 
-    if (!email || !password) {
+    if (!normalizedEmail || !password) {
       return res.status(400).json({ success: false, message: 'Email and password are required' });
     }
 
     // Find user with password field included
-    const user = await User.findOne({ email }).select('+password');
+    const user = await User.findOne({ email: normalizedEmail }).select('+password');
     if (!user) {
       return res.status(401).json({ success: false, message: 'Invalid email or password' });
     }
