@@ -45,27 +45,42 @@ export default function SellerDashboard() {
 
   useEffect(() => {
     fetchData();
+    // Poll for real-time updates every 5 seconds to simulate real-time sockets
+    const interval = setInterval(fetchDataSilently, 5000);
+    return () => clearInterval(interval);
   }, []);
 
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchDataSilently = async () => {
     try {
       const [insRes, anaRes] = await Promise.all([
         sellerAPI.getInsights({ sellerId: user?._id }),
         sellerAPI.getAnalytics(user?._id),
       ]);
       if (insRes.data.success) {
-        setInsights(insRes.data.data.insights || insRes.data.data || []);
-        if (insRes.data.data.insights?.[0] || insRes.data.data[0]) {
-          setSelectedProperty(insRes.data.data.insights?.[0] || insRes.data.data[0]);
-        }
+        const newInsights = insRes.data.data.insights || insRes.data.data || [];
+        setInsights(newInsights);
+        
+        // Ensure UI updates if currently selected property data changed
+        setSelectedProperty(current => {
+          if (!current && newInsights.length > 0) return newInsights[0];
+          if (current) {
+            const updatedProfile = newInsights.find(i => i._id === current._id);
+            return updatedProfile || current;
+          }
+          return current;
+        });
       }
       if (anaRes.data.success) {
         setAnalytics(anaRes.data.data);
       }
     } catch (err) {
-      console.error('Failed to load seller data:', err);
+      console.error('Silently failed to load seller data:', err);
     }
+  };
+
+  const fetchData = async () => {
+    setLoading(true);
+    await fetchDataSilently();
     setLoading(false);
   };
 

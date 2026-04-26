@@ -29,6 +29,12 @@ router.get('/', propertyController.getAllProperties);
 router.get('/:id', propertyController.getPropertyById);
 
 /**
+ * @route   POST /api/properties/:id/save
+ * @desc    Increment the saves counter
+ */
+router.post('/:id/save', propertyController.saveProperty);
+
+/**
  * @route   PATCH /api/properties/:id
  * @desc    Update an existing property
  */

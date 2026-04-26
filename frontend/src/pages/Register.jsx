@@ -26,7 +26,7 @@ export default function Register() {
       const { data } = await authAPI.register(form);
       if (data.success) {
         login(data.data.user, data.data.token);
-        navigate(data.data.user.role === 'seller' ? '/seller/dashboard' : '/buyer/dashboard');
+        navigate(data.data.user.role === 'seller' ? '/seller/dashboard' : '/buyer/onboarding');
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Registration failed. Please try again.');

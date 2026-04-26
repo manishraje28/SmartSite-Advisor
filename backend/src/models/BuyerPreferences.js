@@ -111,15 +111,14 @@ const buyerPreferencesSchema = new mongoose.Schema(
     },
 
     referencePoint: {
-      // GeoJSON Point — the buyer's office, school, or anchor location
       type: {
         type: String,
         enum: ['Point'],
-        default: 'Point',
+        required: false
       },
       coordinates: {
         type: [Number],       // [longitude, latitude]
-        default: null,
+        required: false
       },
     },
 
