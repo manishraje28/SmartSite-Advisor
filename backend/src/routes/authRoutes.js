@@ -20,7 +20,10 @@ router.post('/register', async (req, res) => {
 
     // If buyer, create default preferences
     if (user.role === 'buyer') {
-      await BuyerPreferences.create({ user: user._id });
+      await BuyerPreferences.create({ 
+        user: user._id,
+        referencePoint: undefined // Provide undefined instead of relying on schema default which might be null coordinates
+      });
     }
 
     // Generate JWT

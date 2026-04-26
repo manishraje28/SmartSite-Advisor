@@ -43,6 +43,7 @@ export const propertyAPI = {
   create: (data) => api.post('/properties', data),
   update: (id, data) => api.patch(`/properties/${id}`, data),
   delete: (id) => api.delete(`/properties/${id}`),
+  saveProperty: (id) => api.post(`/properties/${id}/save`),
 };
 
 // ── Buyer API ───────────────────────────────

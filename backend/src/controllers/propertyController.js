@@ -70,6 +70,21 @@ const updateProperty = async (req, res, next) => {
 };
 
 /**
+ * Saves/Likes a property.
+ */
+const saveProperty = async (req, res, next) => {
+  try {
+    const property = await propertyService.saveProperty(req.params.id);
+    if (!property) {
+      return sendError(res, 404, 'Property not found');
+    }
+    return sendSuccess(res, 200, 'Property saved successfully', property.saves);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * Deletes a property.
  */
 const deleteProperty = async (req, res, next) => {
@@ -88,6 +103,7 @@ module.exports = {
   createProperty,
   getAllProperties,
   getPropertyById,
+  saveProperty,
   updateProperty,
   deleteProperty,
 };

@@ -5,6 +5,7 @@ import Register from '../pages/Register';
 import NotFound from '../pages/NotFound';
 import SellerDashboard from '../pages/SellerDashboard';
 import BuyerDashboard from '../pages/BuyerDashboard';
+import BuyerOnboarding from '../pages/BuyerOnboarding';
 import PropertyListing from '../pages/PropertyListing';
 import ComparisonDashboard from '../pages/ComparisonDashboard';
 import CreateProperty from '../pages/CreateProperty';
@@ -56,6 +57,12 @@ export const createRoutes = () => [
   },
 
   // Buyer routes (protected)
+  {
+    path: '/buyer/onboarding',
+    element: <BuyerOnboarding />,
+    protected: true,
+    requiredRole: 'buyer',
+  },
   {
     path: '/buyer/dashboard',
     element: <BuyerDashboard />,

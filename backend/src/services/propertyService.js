@@ -7,7 +7,7 @@
  * without needing an HTTP request.
  */
 
-const { Property } = require('../models');
+const { Property, SellerInsights } = require('../models');
 const scoringService = require('./scoringService');
 const { validatePropertyForScoring } = require('../utils/scoringValidator');
 
@@ -51,6 +51,60 @@ const scoringPropertyAsync = async (property) => {
       property.aiScore.lastScoredAt = new Date();
       await property.save();
       console.log(`[Scoring] Successfully scored property ${property._id}: overall=${aiScore.overall}`);
+
+      // Dynamically Generate AI Insights for the Seller
+      const suggestions = [];
+
+      if (aiScore.breakdown?.location?.reasoning) {
+        suggestions.push({ type: 'targeting', priority: 'medium', impact: 10, message: aiScore.breakdown.location.reasoning.split('.')[0] });
+      }
+      if (aiScore.breakdown?.connectivity?.reasoning) {
+        suggestions.push({ type: 'description', priority: 'high', impact: 15, message: aiScore.breakdown.connectivity.reasoning });
+      }
+      if (aiScore.breakdown?.amenities?.reasoning) {
+        suggestions.push({ type: 'amenity', priority: 'low', impact: 5, message: aiScore.breakdown.amenities.reasoning });
+      }
+      if (aiScore.breakdown?.roiPotential?.reasoning) {
+        suggestions.push({ type: 'pricing', priority: 'high', impact: 20, message: aiScore.breakdown.roiPotential.reasoning });
+      }
+
+      await SellerInsights.findOneAndUpdate(
+        { property: property._id },
+        {
+          $set: {
+            seller: property.seller,
+            'currentScore.overall': aiScore.overall || 70,
+            'currentScore.locationScore': aiScore.locationScore || 70,
+            'currentScore.connectivityScore': aiScore.connectivityScore || 70,
+            'currentScore.amenitiesScore': aiScore.amenitiesScore || 70,
+            'currentScore.roiPotential': aiScore.roiPotential || 70,
+            demandStats: {
+              totalViews: property.views || 0,
+              uniqueViews: Math.round((property.views || 0) * 0.7),
+              totalSaves: property.saves || 0,
+              totalInquiries: property.inquiries || 0,
+              weeklyTrend: [
+                { week: 'Current', views: property.views || 0, inquiries: property.inquiries || 0 }
+              ]
+            },
+            demandLevel: 'moderate',
+            buyerSegmentMatch: { family: 60, investor: 50, bachelors: 30 },
+            topTargetSegment: 'family',
+            improvementSuggestions: suggestions.length ? suggestions : [{ type: 'imagery', priority: 'medium', impact: 20, message: 'Add better property images to increase views.' }],
+            lastAiAnalysisAt: new Date(),
+            analysisVersion: '1.2.0 (Dynamic)'
+          },
+          $push: {
+            scoreHistory: {
+              score: aiScore.overall || 70,
+              recordedAt: new Date(),
+              reason: 'AI Scoring Engine Analysis'
+            }
+          }
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
+      console.log(`[Scoring] Dynamic SellerInsights upserted for property ${property._id}`);
     }
   } catch (error) {
     console.error(`[Scoring] Error in scoringPropertyAsync:`, error.message);
@@ -89,10 +143,44 @@ const getAllProperties = async (filters = {}, options = {}) => {
 
 /**
  * Fetches a single property by ID.
+ * Increments the view count dynamically.
  * @param {String} id - The MongoDB ObjectID.
  */
 const getPropertyById = async (id) => {
-  const property = await Property.findById(id).populate('seller', 'name email');
+  const property = await Property.findByIdAndUpdate(
+    id,
+    { $inc: { views: 1 } },
+    { new: true }
+  ).populate('seller', 'name email');
+
+  if (property) {
+    await SellerInsights.updateOne(
+      { property: id },
+      { $inc: { 'demandStats.totalViews': 1 } }
+    ).catch(err => console.error('Failed to increment SellerInsights views:', err));
+  }
+
+  return property;
+};
+
+/**
+ * Saves/Likes a property, incrementing the save count.
+ * @param {String} id - The MongoDB ObjectID.
+ */
+const saveProperty = async (id) => {
+  const property = await Property.findByIdAndUpdate(
+    id,
+    { $inc: { saves: 1 } },
+    { new: true }
+  );
+
+  if (property) {
+    await SellerInsights.updateOne(
+      { property: id },
+      { $inc: { 'demandStats.totalSaves': 1 } }
+    ).catch(err => console.error('Failed to increment SellerInsights saves:', err));
+  }
+
   return property;
 };
 
@@ -122,6 +210,7 @@ module.exports = {
   createProperty,
   getAllProperties,
   getPropertyById,
+  saveProperty,
   updateProperty,
   deleteProperty,
 };

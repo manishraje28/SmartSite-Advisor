@@ -1,9 +1,36 @@
-﻿import React from 'react';
+﻿import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { MapPin, Bed, Bath, Maximize, Heart, TrendingUp, Sparkles, Building2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { propertyAPI } from '../../services/api';
 
 export default function PropertyCard({ property, matchPercentage }) {
+  const [isSaved, setIsSaved] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = async (e) => {
+    e.preventDefault(); // Prevent navigating if this is inside a link
+    if (isSaving || isSaved) return;
+
+    setIsSaving(true);
+    try {
+      await propertyAPI.saveProperty(property._id);
+      setIsSaved(true);
+    } catch (err) {
+      console.error("Failed to save property:", err);
+    }
+    setIsSaving(false);
+  };
+
+  const handleViewDetails = async () => {
+    if (!property?._id) return;
+    try {
+      await propertyAPI.getById(property._id);
+    } catch (error) {
+      console.error('Failed to register view analytics:', error);
+    }
+  };
+
   const {
     _id, title, price, location, specifications, images,
     propertyType, aiScore
@@ -58,8 +85,12 @@ export default function PropertyCard({ property, matchPercentage }) {
         </div>
 
         {/* Floating Like Button */}
-        <button className="absolute bottom-4 right-4 w-10 h-10 rounded-full bg-white/20 backdrop-blur-md border border-white/20 flex items-center justify-center opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 hover:bg-white text-white hover:text-rose-500">
-          <Heart size={18} />
+        <button 
+          onClick={handleSave}
+          className={`absolute bottom-4 right-4 w-10 h-10 rounded-full backdrop-blur-md border flex items-center justify-center transition-all duration-300 z-10 
+            ${isSaved ? 'bg-rose-500 border-rose-500 text-white opacity-100 translate-y-0' : 'bg-white/20 border-white/20 opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 hover:bg-white text-white hover:text-rose-500'}`}
+        >
+          <Heart size={18} className={isSaved ? "fill-white" : ""} />
         </button>
       </div>
 
@@ -101,6 +132,7 @@ export default function PropertyCard({ property, matchPercentage }) {
           </div>
           <Link 
             to={`/property/${_id}`} 
+            onClick={handleViewDetails}
             className="h-10 px-4 flex items-center justify-center rounded-xl bg-slate-50 text-slate-900 font-semibold text-sm border border-slate-200 hover:bg-slate-900 hover:text-white transition-all duration-300"
           >
             View Details
