@@ -133,7 +133,15 @@ router.post('/explain', async (req, res) => {
     const { message, propertyId, radius } = req.body;
     
     if (!groq) {
-      return res.status(500).json({ success: false, message: 'Groq API key not configured' });
+      // Fallback if no Groq API Key is configured
+      const property = await Property.findById(propertyId).lean();
+      return res.json({
+        success: true,
+        data: {
+          reply: `To get real AI insights, please add your GROQ_API_KEY to the backend .env file. For now, I can see you're looking at ${property ? property.title : 'this property'}.`,
+          rawAmenities: {}
+        }
+      });
     }
 
     // 1. Get the property being discussed
