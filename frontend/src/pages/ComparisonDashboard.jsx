@@ -89,10 +89,18 @@ export default function ComparisonDashboard() {
   };
 
   const radarData = comparedProperties.length > 0
-    ? ['Livability', 'Connectivity', 'Amenities', 'ROI'].map(label => {
+    ? ['Livability', 'Connectivity', 'Amenities', 'Environment', 'ROI'].map(label => {
       const point = { subject: label };
       comparedProperties.forEach((prop, i) => {
-        const scoreKey = label === 'Livability' ? (prop.livabilityScore || prop.aiScore?.locationScore) : label === 'Connectivity' ? (prop.connectivityScore || prop.aiScore?.connectivityScore) : label === 'Amenities' ? prop.aiScore?.amenitiesScore : prop.aiScore?.roiPotential;
+        const scoreKey = label === 'Livability'
+          ? (prop.livabilityScore || prop.aiScore?.locationScore)
+          : label === 'Connectivity'
+            ? (prop.connectivityScore || prop.aiScore?.connectivityScore)
+            : label === 'Amenities'
+              ? prop.aiScore?.amenitiesScore
+              : label === 'Environment'
+                ? prop.environmentScore?.overall
+                : prop.aiScore?.roiPotential;
         point[`prop${i}`] = scoreKey || 50;
       });
       return point;
@@ -318,6 +326,7 @@ export default function ComparisonDashboard() {
                     { label: 'Livability (Maps)', score: prop.livabilityScore || prop.aiScore?.locationScore },
                     { label: 'Transit & Conn.', score: prop.connectivityScore || prop.aiScore?.connectivityScore },
                     { label: 'Internal Amenities', score: prop.aiScore?.amenitiesScore },
+                    { label: 'Environment', score: prop.environmentScore?.overall },
                     { label: 'ROI', score: prop.aiScore?.roiPotential },
                   ].map(item => (
                     <div key={item.label}>

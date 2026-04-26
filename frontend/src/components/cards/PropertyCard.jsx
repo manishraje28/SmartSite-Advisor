@@ -1,6 +1,6 @@
 ﻿import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { MapPin, Bed, Bath, Maximize, Heart, TrendingUp, Sparkles, Building2 } from 'lucide-react';
+import { MapPin, Bed, Bath, Maximize, Heart, TrendingUp, Sparkles, Building2, CloudSun } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { propertyAPI } from '../../services/api';
 
@@ -44,6 +44,7 @@ export default function PropertyCard({ property, matchPercentage }) {
   };
 
   const match = matchPercentage || aiScore?.overall || 0;
+  const environmentalScore = property.environmentScore?.overall ?? null;
 
   const getScoreTheme = (score) => {
     if (score >= 80) return { text: 'text-ai-emerald', bg: 'bg-ai-emerald/10', border: 'border-ai-emerald/20' };
@@ -52,6 +53,7 @@ export default function PropertyCard({ property, matchPercentage }) {
   };
 
   const theme = getScoreTheme(match);
+  const environmentalTheme = getScoreTheme(environmentalScore || 0);
 
   return (
     <motion.div
@@ -72,12 +74,23 @@ export default function PropertyCard({ property, matchPercentage }) {
 
         {/* Top Badges */}
         <div className="absolute top-4 left-4 right-4 flex justify-between items-start">
-          {match > 0 ? (
-            <div className={`px-3 py-1.5 rounded-full flex items-center gap-1.5 backdrop-blur-md border ${theme.bg} ${theme.border}`}>
-              <Sparkles size={14} className={theme.text} />
-              <span className={`text-xs font-bold ${theme.text}`}>{match}% AI Match</span>
-            </div>
-          ) : <div />}
+          <div className="flex flex-col gap-2">
+            {match > 0 ? (
+              <div className={`px-3 py-1.5 rounded-full flex items-center gap-1.5 backdrop-blur-md border ${theme.bg} ${theme.border}`}>
+                <Sparkles size={14} className={theme.text} />
+                <span className={`text-xs font-bold ${theme.text}`}>{match}% AI Match</span>
+              </div>
+            ) : <div />}
+
+            {environmentalScore !== null && (
+              <div className={`px-3 py-1.5 rounded-full flex items-center gap-1.5 backdrop-blur-md border ${environmentalTheme.bg} ${environmentalTheme.border}`}>
+                <CloudSun size={14} className={environmentalTheme.text} />
+                <span className={`text-xs font-bold ${environmentalTheme.text}`}>
+                  AQI {property.environmentScore?.aqi ?? 'N/A'} · {property.environmentScore?.aqiLabel || 'Unknown'} · {environmentalScore}% Env
+                </span>
+              </div>
+            )}
+          </div>
           
           <div className="px-3 py-1.5 rounded-full bg-slate-900/40 backdrop-blur-md border border-white/10">
             <span className="text-xs font-medium text-white">{propertyType || 'Property'}</span>

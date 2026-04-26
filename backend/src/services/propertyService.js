@@ -9,6 +9,7 @@
 
 const { Property, SellerInsights } = require('../models');
 const scoringService = require('./scoringService');
+const weatherService = require('./openWeatherService');
 const { validatePropertyForScoring } = require('../utils/scoringValidator');
 
 /**
@@ -37,19 +38,19 @@ const scoringPropertyAsync = async (property) => {
   try {
     // Validate property before scoring
     const validation = validatePropertyForScoring(property.toObject());
-    if (!validation.isValid) {
+    const canRunAiScore = validation.isValid;
+    if (!canRunAiScore) {
       console.warn(`[Scoring] Validation failed for property ${property._id}: ${validation.errors.join(', ')}`);
-      return;
     }
 
-    // Call Python Scoring Engine
-    const aiScore = await scoringService.scoreProperty(property);
+    const [aiScore, environmentScore] = await Promise.all([
+      canRunAiScore ? scoringService.scoreProperty(property) : Promise.resolve(null),
+      weatherService.getEnvironmentalInsights(property),
+    ]);
 
     if (aiScore) {
-      // Update property with aiScore
       property.aiScore = aiScore;
       property.aiScore.lastScoredAt = new Date();
-      await property.save();
       console.log(`[Scoring] Successfully scored property ${property._id}: overall=${aiScore.overall}`);
 
       // Dynamically Generate AI Insights for the Seller
@@ -105,6 +106,15 @@ const scoringPropertyAsync = async (property) => {
         { upsert: true, new: true, setDefaultsOnInsert: true }
       );
       console.log(`[Scoring] Dynamic SellerInsights upserted for property ${property._id}`);
+    }
+
+    if (environmentScore) {
+      property.environmentScore = environmentScore;
+      console.log(`[Weather] Successfully scored property ${property._id}: env=${environmentScore.overall}`);
+    }
+
+    if (aiScore || environmentScore) {
+      await property.save();
     }
   } catch (error) {
     console.error(`[Scoring] Error in scoringPropertyAsync:`, error.message);
