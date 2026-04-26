@@ -19,7 +19,8 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const { data } = await authAPI.login({ email, password });
+      const normalizedEmail = email.trim().toLowerCase();
+      const { data } = await authAPI.login({ email: normalizedEmail, password });
       if (data.success) {
         login(data.data.user, data.data.token);
         const role = data.data.user.role;
