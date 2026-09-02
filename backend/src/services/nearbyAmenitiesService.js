@@ -11,16 +11,29 @@ const AMENITY_TYPES = {
   supermarkets: 'supermarket',
 };
 
+/**
+ * Finds the nearest amenities of each type to a specific point, sorted strictly
+ * by real distance (not Google's default "prominence" ranking, which can surface
+ * a bigger/more-reviewed place over one that's actually closer).
+ *
+ * Uses Places Nearby Search with `rankby=distance` (returns up to 20 results already
+ * ordered nearest-first, per Google's own ranking) as a candidate pool, then confirms
+ * real distance/duration via the Distance Matrix API and re-sorts on that — so the
+ * final "top 3" are genuinely the 3 closest, with accurate distance/time to show.
+ *
+ * @param {number} lat
+ * @param {number} lng
+ * @param {number} [radius=2000] - soft cutoff in meters; if nothing qualifies within
+ *   it, falls back to the nearest available results anyway rather than returning empty.
+ */
 async function getNearbyAmenities(lat, lng, radius = 2000) {
   if (!GOOGLE_MAPS_API_KEY) {
     console.warn("Google Maps API Key not configured.");
     return null;
   }
-  
+
   const amenitiesData = {};
-  
-  // To avoid hitting quota limits or throttling, run these sequentially or with small delay if necessary.
-  // Running in parallel here since we typically compare 2 properties.
+
   const promises = Object.entries(AMENITY_TYPES).map(async ([key, type]) => {
     try {
       const response = await axios.get(
@@ -28,25 +41,31 @@ async function getNearbyAmenities(lat, lng, radius = 2000) {
         {
           params: {
             location: `${lat},${lng}`,
-            radius,
+            rankby: 'distance', // strictly nearest-first; cannot be combined with `radius`
             type,
             key: GOOGLE_MAPS_API_KEY
           }
         }
       );
-      
+
       const results = response.data.results || [];
-      const topResults = results.slice(0, 3).map(r => ({
+      const candidates = results.slice(0, 5).map(r => ({
         name: r.name,
         location: r.geometry.location,
         rating: r.rating,
         vicinity: r.vicinity,
         type: key
       }));
-      
+
+      const withDistance = await getDistancesToAmenities(lat, lng, candidates);
+      const withinRadius = withDistance.filter((a) => a.distanceValue <= radius);
+      const nearest = (withinRadius.length > 0 ? withinRadius : withDistance)
+        .sort((a, b) => a.distanceValue - b.distanceValue)
+        .slice(0, 3);
+
       amenitiesData[key] = {
         count: results.length,
-        top: topResults
+        top: nearest
       };
     } catch (error) {
       console.error(`Error fetching ${key}:`, error.message);
@@ -116,23 +135,12 @@ async function enhancePropertyWithLivability(property) {
     return enhancedProperty;
   }
 
-  // Gather the top 1 amenity from each category to calculate distances
-  const topAmenities = [];
-  Object.values(amenities).forEach(cat => {
-    if (cat.top.length > 0) topAmenities.push(cat.top[0]);
-  });
-  
-  const amenitiesWithDistance = await getDistancesToAmenities(lat, lng, topAmenities);
-  
-  // Add distances back to the main categories for the frontend
-  amenitiesWithDistance.forEach(awd => {
-    const categoryTop = amenities[awd.type].top;
-    const match = categoryTop.find(a => a.name === awd.name);
-    if (match) {
-      match.distanceText = awd.distanceText;
-      match.durationText = awd.durationText;
-      match.distanceValue = awd.distanceValue;
-    }
+  // getNearbyAmenities already sorts nearest-first and annotates each entry with
+  // real distance/duration, so the top-1-per-category is already what we need here
+  // without a second, redundant Distance Matrix call.
+  const amenitiesWithDistance = [];
+  Object.values(amenities).forEach((cat) => {
+    if (cat.top.length > 0) amenitiesWithDistance.push(cat.top[0]);
   });
 
   // Calculate Livability & Connectivity Scores out of 100

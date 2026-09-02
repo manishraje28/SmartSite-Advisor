@@ -1,4 +1,5 @@
 const axios = require('axios');
+const { getGoogleAirQuality } = require('./googleAirQualityService');
 
 const OPENWEATHERMAP_API_KEY = process.env.OPENWEATHERMAP_API_KEY || process.env.OPEN_WEATHER_MAP_API_KEY;
 const OPENWEATHERMAP_BASE_URL = process.env.OPENWEATHERMAP_BASE_URL || 'https://api.openweathermap.org/data/2.5';
@@ -25,6 +26,19 @@ const mapAqiToScore = (aqi) => {
   if (aqi <= 3) return 60;
   if (aqi <= 4) return 35;
   return 15;
+};
+
+// Google Air Quality API's India-local index uses the CPCB National AQI scale
+// (0-500, higher = worse) — a different scale from OpenWeatherMap's 1-5 index above,
+// so it needs its own bucket mapping to a 0-100 "clean air" score.
+const mapCpcbAqiToScore = (aqi) => {
+  if (aqi === null || aqi === undefined) return 55;
+  if (aqi <= 50) return 100;   // Good
+  if (aqi <= 100) return 85;   // Satisfactory
+  if (aqi <= 200) return 60;   // Moderate
+  if (aqi <= 300) return 35;   // Poor
+  if (aqi <= 400) return 15;   // Very Poor
+  return 5;                    // Severe
 };
 
 const mapPm25Score = (pm25) => {
@@ -132,9 +146,31 @@ const buildRecommendations = ({ airQualityScore, comfortScore, trendLabel }) => 
   return recommendations;
 };
 
-const scoreEnvironment = ({ currentAqi, pollutionComponents, weatherData, forecastAqiAvg }) => {
-  const airQualityScore = mapAqiToScore(currentAqi);
-  const pollutantExposureScore = Math.round((mapPm25Score(pollutionComponents?.pm2_5) + mapPm10Score(pollutionComponents?.pm10)) / 2);
+const scoreEnvironment = ({ googleAqi, owmCurrentAqi, owmPollutionComponents, weatherData, forecastAqiAvg }) => {
+  // Google's India-local (CPCB) AQI is preferred when available — it's the scale
+  // Indian users actually recognize, and comes with real pollutant concentrations.
+  // OpenWeatherMap's air_pollution endpoint (1-5 scale) is the fallback.
+  const usingGoogle = !!googleAqi;
+
+  const headlineAqi = usingGoogle ? googleAqi.aqi : owmCurrentAqi;
+  const aqiLabel = usingGoogle ? googleAqi.aqiLabel : getAqiLabel(owmCurrentAqi);
+  const pollutants = usingGoogle
+    ? googleAqi.pollutants
+    : (owmPollutionComponents
+      ? {
+          co: owmPollutionComponents.co ?? null,
+          no: owmPollutionComponents.no ?? null,
+          no2: owmPollutionComponents.no2 ?? null,
+          o3: owmPollutionComponents.o3 ?? null,
+          so2: owmPollutionComponents.so2 ?? null,
+          pm2_5: owmPollutionComponents.pm2_5 ?? null,
+          pm10: owmPollutionComponents.pm10 ?? null,
+          nh3: owmPollutionComponents.nh3 ?? null,
+        }
+      : null);
+
+  const airQualityScore = usingGoogle ? mapCpcbAqiToScore(googleAqi.aqi) : mapAqiToScore(owmCurrentAqi);
+  const pollutantExposureScore = Math.round((mapPm25Score(pollutants?.pm2_5) + mapPm10Score(pollutants?.pm10)) / 2);
 
   const temp = weatherData?.main?.temp ?? null;
   const humidity = weatherData?.main?.humidity ?? null;
@@ -148,7 +184,11 @@ const scoreEnvironment = ({ currentAqi, pollutionComponents, weatherData, foreca
   const visibilityScore = scoreVisibility(visibilityKm);
 
   const comfortScore = Math.round((temperatureScore + humidityScore + windScore + visibilityScore) / 4 - (rainMm > 5 ? 15 : rainMm > 1 ? 8 : 0));
-  const trendDelta = (currentAqi || forecastAqiAvg) ? (currentAqi || forecastAqiAvg) - (forecastAqiAvg || currentAqi) : 0;
+  // Trend stays scale-consistent by always comparing OpenWeatherMap's own current
+  // vs. forecast AQI (both 1-5) — independent of which source supplies the headline
+  // `aqi` number above, since Google's CPCB scale and OWM's 1-5 scale can't be
+  // diffed against each other directly.
+  const trendDelta = (owmCurrentAqi || forecastAqiAvg) ? (owmCurrentAqi || forecastAqiAvg) - (forecastAqiAvg || owmCurrentAqi) : 0;
   const trendScore = clamp(Math.round(50 + trendDelta * 20));
   const trendLabel = getTrendLabel(trendDelta);
 
@@ -159,9 +199,8 @@ const scoreEnvironment = ({ currentAqi, pollutionComponents, weatherData, foreca
     (trendScore * 0.20)
   );
 
-  const aqiLabel = getAqiLabel(currentAqi);
   const summary = buildSummary({
-    aqi: currentAqi,
+    aqi: headlineAqi,
     aqiLabel,
     weather: temp !== null ? { temp, humidity } : null,
     forecastTrend: trendLabel,
@@ -171,25 +210,14 @@ const scoreEnvironment = ({ currentAqi, pollutionComponents, weatherData, foreca
 
   return {
     overall: clamp(overall),
-    aqi: currentAqi || null,
+    aqi: headlineAqi || null,
     aqiLabel,
     airQualityScore,
     pollutantExposureScore,
     comfortScore: clamp(comfortScore),
     trendScore,
     trendLabel,
-    pollutants: pollutionComponents
-      ? {
-          co: pollutionComponents.co ?? null,
-          no: pollutionComponents.no ?? null,
-          no2: pollutionComponents.no2 ?? null,
-          o3: pollutionComponents.o3 ?? null,
-          so2: pollutionComponents.so2 ?? null,
-          pm2_5: pollutionComponents.pm2_5 ?? null,
-          pm10: pollutionComponents.pm10 ?? null,
-          nh3: pollutionComponents.nh3 ?? null,
-        }
-      : null,
+    pollutants,
     weather: weatherData
       ? {
           temp: weatherData.main?.temp ?? null,
@@ -208,7 +236,7 @@ const scoreEnvironment = ({ currentAqi, pollutionComponents, weatherData, foreca
     },
     summary,
     recommendations,
-    source: 'OpenWeatherMap',
+    source: usingGoogle ? 'Google Air Quality API + OpenWeatherMap' : 'OpenWeatherMap',
     lastUpdated: new Date().toISOString(),
   };
 };
@@ -240,41 +268,47 @@ const fetchWeatherPayload = async (lat, lng) => {
     },
   };
 
-  const [weatherResult, pollutionResult, forecastResult] = await Promise.allSettled([
-    axios.get(`${OPENWEATHERMAP_BASE_URL}/weather`, {
-      ...requestConfig,
-      params: {
-        ...requestConfig.params,
-        units: 'metric',
-      },
-    }),
-    axios.get(`${OPENWEATHERMAP_BASE_URL}/air_pollution`, requestConfig),
-    axios.get(`${OPENWEATHERMAP_BASE_URL}/air_pollution/forecast`, requestConfig),
+  // Google Air Quality API is fetched alongside OpenWeatherMap regardless — it's
+  // the preferred AQI source, with OpenWeatherMap's air_pollution endpoint kept as
+  // a same-call fallback (and as the scale-consistent input for the trend calc).
+  const [weatherResult, pollutionResult, forecastResult, googleAqiResult] = await Promise.allSettled([
+    OPENWEATHERMAP_API_KEY
+      ? axios.get(`${OPENWEATHERMAP_BASE_URL}/weather`, { ...requestConfig, params: { ...requestConfig.params, units: 'metric' } })
+      : Promise.resolve(null),
+    OPENWEATHERMAP_API_KEY
+      ? axios.get(`${OPENWEATHERMAP_BASE_URL}/air_pollution`, requestConfig)
+      : Promise.resolve(null),
+    OPENWEATHERMAP_API_KEY
+      ? axios.get(`${OPENWEATHERMAP_BASE_URL}/air_pollution/forecast`, requestConfig)
+      : Promise.resolve(null),
+    getGoogleAirQuality(lat, lng),
   ]);
 
-  const weatherData = weatherResult.status === 'fulfilled' ? weatherResult.value.data : null;
-  const pollutionData = pollutionResult.status === 'fulfilled' ? pollutionResult.value.data : null;
-  const forecastData = forecastResult.status === 'fulfilled' ? forecastResult.value.data : null;
+  const weatherData = weatherResult.status === 'fulfilled' ? weatherResult.value?.data ?? null : null;
+  const pollutionData = pollutionResult.status === 'fulfilled' ? pollutionResult.value?.data ?? null : null;
+  const forecastData = forecastResult.status === 'fulfilled' ? forecastResult.value?.data ?? null : null;
+  const googleAqi = googleAqiResult.status === 'fulfilled' ? googleAqiResult.value : null;
 
-  const currentAqi = pollutionData?.list?.[0]?.main?.aqi ?? null;
-  const pollutionComponents = pollutionData?.list?.[0]?.components || null;
+  const owmCurrentAqi = pollutionData?.list?.[0]?.main?.aqi ?? null;
+  const owmPollutionComponents = pollutionData?.list?.[0]?.components || null;
   const forecastAqiAvg = getForecastAqiAverage(forecastData?.list || []);
 
-  if (!weatherData && !pollutionData && !forecastData) {
+  if (!weatherData && !pollutionData && !forecastData && !googleAqi) {
     return null;
   }
 
   return scoreEnvironment({
-    currentAqi,
-    pollutionComponents,
+    googleAqi,
+    owmCurrentAqi,
+    owmPollutionComponents,
     weatherData,
     forecastAqiAvg,
   });
 };
 
 async function getEnvironmentalInsights(input) {
-  if (!OPENWEATHERMAP_API_KEY) {
-    console.warn('[Weather] OPENWEATHERMAP_API_KEY not configured. Skipping environmental scoring.');
+  if (!OPENWEATHERMAP_API_KEY && !process.env.GOOGLE_MAPS_API_KEY) {
+    console.warn('[Weather] Neither OPENWEATHERMAP_API_KEY nor GOOGLE_MAPS_API_KEY is configured. Skipping environmental scoring.');
     return null;
   }
 

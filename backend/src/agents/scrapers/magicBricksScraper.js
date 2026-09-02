@@ -1,4 +1,5 @@
 const { PlaywrightCrawler } = require('crawlee');
+const { geocodeAddress } = require('../../services/googleGeocodingService');
 
 const CITY_URL_SLUGS = {
   'Mumbai': 'Mumbai',
@@ -118,6 +119,27 @@ async function scrapeMagicBricks({ city = 'Mumbai', locality = '', limit = 300, 
   const results = [];
   const seenSourceUrls = new Set();
 
+  // In-process cache so multiple listings sharing a locality within this run only
+  // trigger one geocoding lookup — googleGeocodingService itself persists results
+  // to MongoDB, so repeat runs (including the daily auto-sync) don't re-geocode
+  // the same locality either.
+  const localityGeoCache = new Map();
+  async function resolveGeo(locality, city) {
+    const cityDefault = CITY_DEFAULT_GEO[city] || CITY_DEFAULT_GEO['Mumbai'];
+    if (!locality) return cityDefault;
+
+    const cacheKey = `${locality}, ${city}`;
+    if (localityGeoCache.has(cacheKey)) return localityGeoCache.get(cacheKey);
+
+    const geocoded = await geocodeAddress(`${locality}, ${city}, Maharashtra, India`);
+    const resolved = geocoded
+      ? { lat: geocoded.lat, lng: geocoded.lng, state: cityDefault.state }
+      : cityDefault;
+
+    localityGeoCache.set(cacheKey, resolved);
+    return resolved;
+  }
+
   const crawler = new PlaywrightCrawler({
     headless: true,
     maxRequestsPerCrawl: maxPages,
@@ -177,7 +199,7 @@ async function scrapeMagicBricks({ city = 'Mumbai', locality = '', limit = 300, 
         if (seenSourceUrls.has(dedupeKey)) continue;
         seenSourceUrls.add(dedupeKey);
 
-        const geo = CITY_DEFAULT_GEO[city] || CITY_DEFAULT_GEO['Mumbai'];
+        const geo = await resolveGeo(resolvedLocality, parsedCity || city);
 
         results.push({
           title: card.title,

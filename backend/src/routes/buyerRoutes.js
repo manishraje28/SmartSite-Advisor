@@ -198,7 +198,10 @@ router.post('/explain', async (req, res) => {
         },
         { role: 'user', content: message }
       ],
-      model: 'openai/gpt-oss-120b',
+      // openai/gpt-oss-120b returns empty content on short/typical prompts (its token
+      // budget gets consumed by internal reasoning before any visible output) —
+      // qwen/qwen3.8-27b was verified to reliably return real content.
+      model: 'qwen/qwen3.8-27b',
     });
 
     res.json({
