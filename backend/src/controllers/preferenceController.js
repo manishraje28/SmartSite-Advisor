@@ -5,29 +5,22 @@
  * Handles HTTP request/response logic for preference endpoints.
  * Extracts and validates incoming data, calls service layer,
  * and returns consistent API responses.
+ *
+ * The buyer is always the authenticated caller (`req.user.id`, set by the
+ * `protect` middleware) — never a client-supplied id — so one buyer can
+ * never read or overwrite another buyer's preferences.
  */
 
 const preferenceService = require('../services/preferenceService');
 const { sendSuccess, sendError } = require('../utils/apiResponse');
 
 /**
- * Fetches preferences for a specific buyer.
- * GET /api/buyer/preferences?buyerId=...
- *
- * @param {Object} req - Express request object
- * @param {Object} res - Express response object
- * @param {Function} next - Express next middleware function
+ * Fetches preferences for the authenticated buyer.
+ * GET /api/buyer/preferences
  */
 const getPreferences = async (req, res, next) => {
   try {
-    const { buyerId } = req.query;
-
-    // Validate buyerId is provided
-    if (!buyerId) {
-      return sendError(res, 400, 'buyerId query parameter is required');
-    }
-
-    const preferences = await preferenceService.getPreferences(buyerId);
+    const preferences = await preferenceService.getPreferences(req.user.id);
     return sendSuccess(res, 200, 'Preferences fetched successfully', preferences);
   } catch (error) {
     next(error); // Pass to global error handler
@@ -35,23 +28,12 @@ const getPreferences = async (req, res, next) => {
 };
 
 /**
- * Saves (creates or replaces) buyer preferences.
+ * Saves (creates or replaces) preferences for the authenticated buyer.
  * POST /api/buyer/preferences
- *
- * @param {Object} req - Express request object
- * @param {Object} res - Express response object
- * @param {Function} next - Express next middleware function
  */
 const savePreferences = async (req, res, next) => {
   try {
-    const { buyerId, ...preferenceData } = req.body;
-
-    // Validate buyerId is provided
-    if (!buyerId) {
-      return sendError(res, 400, 'buyerId is required in request body');
-    }
-
-    const preferences = await preferenceService.savePreferences(buyerId, preferenceData);
+    const preferences = await preferenceService.savePreferences(req.user.id, req.body);
     return sendSuccess(res, 201, 'Preferences saved successfully', preferences);
   } catch (error) {
     next(error);
@@ -59,31 +41,19 @@ const savePreferences = async (req, res, next) => {
 };
 
 /**
- * Updates specific preference fields (partial update).
+ * Updates specific preference fields (partial update) for the authenticated buyer.
  * PATCH /api/buyer/preferences
  *
  * Note: This is different from savePreferences which replaces the entire doc.
  * This only updates the fields provided in the request body.
- *
- * @param {Object} req - Express request object
- * @param {Object} res - Express response object
- * @param {Function} next - Express next middleware function
  */
 const updatePreferences = async (req, res, next) => {
   try {
-    const { buyerId, ...updateData } = req.body;
-
-    // Validate buyerId is provided
-    if (!buyerId) {
-      return sendError(res, 400, 'buyerId is required in request body');
-    }
-
-    // Validate at least one field is being updated
-    if (Object.keys(updateData).length === 0) {
+    if (Object.keys(req.body).length === 0) {
       return sendError(res, 400, 'At least one preference field must be provided for update');
     }
 
-    const preferences = await preferenceService.updatePreferences(buyerId, updateData);
+    const preferences = await preferenceService.updatePreferences(req.user.id, req.body);
     return sendSuccess(res, 200, 'Preferences updated successfully', preferences);
   } catch (error) {
     next(error);
@@ -91,23 +61,12 @@ const updatePreferences = async (req, res, next) => {
 };
 
 /**
- * Deletes all preferences for a buyer.
- * DELETE /api/buyer/preferences?buyerId=...
- *
- * @param {Object} req - Express request object
- * @param {Object} res - Express response object
- * @param {Function} next - Express next middleware function
+ * Deletes all preferences for the authenticated buyer.
+ * DELETE /api/buyer/preferences
  */
 const deletePreferences = async (req, res, next) => {
   try {
-    const { buyerId } = req.query;
-
-    // Validate buyerId is provided
-    if (!buyerId) {
-      return sendError(res, 400, 'buyerId query parameter is required');
-    }
-
-    await preferenceService.deletePreferences(buyerId);
+    await preferenceService.deletePreferences(req.user.id);
     return sendSuccess(res, 200, 'Preferences deleted successfully');
   } catch (error) {
     next(error);

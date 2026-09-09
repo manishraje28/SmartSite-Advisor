@@ -32,9 +32,16 @@ const userSchema = new mongoose.Schema(
 
     password: {
       type: String,
-      required: [true, 'Password is required'],
+      // Google Sign-In accounts have no password — only require one for standard email/password signup
+      required: [function () { return !this.googleId; }, 'Password is required'],
       minlength: [8, 'Password must be at least 8 characters'],
       select: false,      // NEVER returned in queries by default — must be explicitly requested
+    },
+
+    googleId: {
+      type: String,
+      unique: true,
+      sparse: true,        // allows many documents with no googleId while still enforcing uniqueness when present
     },
 
     phone: {
