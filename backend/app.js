@@ -21,7 +21,6 @@ const authRoutes = require('./src/routes/authRoutes');
 const buyerRoutes = require('./src/routes/buyerRoutes');
 const sellerRoutes = require('./src/routes/sellerRoutes');
 const propertyRoutes = require('./src/routes/propertyRoutes');
-const userRoutes = require('./src/routes/userRoutes');
 const agentRoutes = require('./src/routes/agentRoutes');
 
 // Middleware modules
@@ -86,7 +85,6 @@ app.use('/api/auth', authRoutes);
 app.use('/api/buyer', buyerRoutes);
 app.use('/api/seller', sellerRoutes);
 app.use('/api/properties', propertyRoutes);
-app.use('/api/users', userRoutes);
 app.use('/api/agents', agentRoutes);
 
 // ─────────────────────────────────────────────

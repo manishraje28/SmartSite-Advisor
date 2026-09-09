@@ -4,24 +4,28 @@ const matchmakingService = require('../services/matchmakingService');
 const Property = require('../models/Property');
 const { getNearbyAmenities } = require('../services/nearbyAmenitiesService');
 const Groq = require('groq-sdk');
+const { protect, restrictTo } = require('../middlewares/auth');
 const groq = process.env.GROQ_API_KEY ? new Groq({ apiKey: process.env.GROQ_API_KEY }) : null;
 
 const router = express.Router();
 
+router.get('/ping', (req, res) => {
+  res.json({ success: true, message: 'Buyer module loaded ✅' });
+});
+
+router.use(protect);
+
 // ── BUYER PREFERENCES ───────────────────────
-router.post('/preferences', preferenceController.savePreferences);
-router.get('/preferences', preferenceController.getPreferences);
-router.patch('/preferences', preferenceController.updatePreferences);
-router.delete('/preferences', preferenceController.deletePreferences);
+router.post('/preferences', restrictTo('buyer'), preferenceController.savePreferences);
+router.get('/preferences', restrictTo('buyer'), preferenceController.getPreferences);
+router.patch('/preferences', restrictTo('buyer'), preferenceController.updatePreferences);
+router.delete('/preferences', restrictTo('buyer'), preferenceController.deletePreferences);
 
 // ── MATCHED PROPERTIES (AI-powered) ─────────
 router.get('/matches', async (req, res) => {
   try {
-    const { buyerId, page, limit, minScore, sort, city, propertyType, minPrice, maxPrice, bedrooms } = req.query;
-    
-    if (!buyerId) {
-      return res.status(400).json({ success: false, message: 'buyerId is required' });
-    }
+    const buyerId = req.user.id;
+    const { page, limit, minScore, sort, city, propertyType, minPrice, maxPrice, bedrooms } = req.query;
 
     const result = await matchmakingService.getMatchedProperties(buyerId, {
       page: page || 1,
@@ -45,8 +49,9 @@ router.get('/matches', async (req, res) => {
 // ── COMPARE PROPERTIES ──────────────────────
 router.post('/compare', async (req, res) => {
   try {
-    const { propertyIds, buyerId } = req.body;
-    
+    const { propertyIds } = req.body;
+    const buyerId = req.user.id;
+
     if (!propertyIds || !Array.isArray(propertyIds) || propertyIds.length < 2) {
       return res.status(400).json({ success: false, message: 'At least 2 property IDs required' });
     }
@@ -216,10 +221,6 @@ router.post('/explain', async (req, res) => {
     console.error('Chat error:', error);
     res.status(500).json({ success: false, message: 'Failed to process chat' });
   }
-});
-
-router.get('/ping', (req, res) => {
-  res.json({ success: true, message: 'Buyer module loaded ✅' });
 });
 
 module.exports = router;

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { authAPI } from '../services/api';
+import GoogleSignInButton from '../components/GoogleSignInButton';
 import { UserPlus, Mail, Lock, User, Phone, Building2, Sparkles, AlertTriangle, ShieldCheck, ArrowRight, CheckCircle2 } from 'lucide-react';
 
 export default function Register() {
@@ -13,6 +14,22 @@ export default function Register() {
   const navigate = useNavigate();
 
   const handleChange = (e) => setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
+
+  const handleGoogleCredential = async (idToken) => {
+    setError('');
+    setLoading(true);
+    try {
+      const { data } = await authAPI.googleLogin(idToken);
+      if (data.success) {
+        login(data.data.user, data.data.token);
+        navigate(data.data.user.role === 'seller' ? '/seller/dashboard' : '/buyer/onboarding');
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Google sign-in failed.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -199,6 +216,16 @@ export default function Register() {
                 )}
               </button>
             </form>
+
+            <div className="mt-5 flex items-center gap-3">
+              <div className="h-px flex-1 bg-slate-200" />
+              <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">or</span>
+              <div className="h-px flex-1 bg-slate-200" />
+            </div>
+
+            <div className="mt-5">
+              <GoogleSignInButton onCredential={handleGoogleCredential} onError={setError} text="signup_with" />
+            </div>
 
             <p className="text-center text-xs text-slate-500 mt-6">
               Already registered?{' '}

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { authAPI } from '../services/api';
+import GoogleSignInButton from '../components/GoogleSignInButton';
 import { LogIn, Mail, Lock, Building2, Sparkles, AlertTriangle, ShieldCheck, UserCheck, ArrowRight } from 'lucide-react';
 
 export default function Login() {
@@ -28,6 +29,22 @@ export default function Login() {
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Login failed. Please verify credentials.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleCredential = async (idToken) => {
+    setError('');
+    setLoading(true);
+    try {
+      const { data } = await authAPI.googleLogin(idToken);
+      if (data.success) {
+        login(data.data.user, data.data.token);
+        navigate(data.data.user.role === 'seller' ? '/seller/dashboard' : '/buyer/dashboard');
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Google sign-in failed.');
     } finally {
       setLoading(false);
     }
@@ -153,6 +170,16 @@ export default function Login() {
                 )}
               </button>
             </form>
+
+            <div className="mt-5 flex items-center gap-3">
+              <div className="h-px flex-1 bg-slate-200" />
+              <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">or</span>
+              <div className="h-px flex-1 bg-slate-200" />
+            </div>
+
+            <div className="mt-5">
+              <GoogleSignInButton onCredential={handleGoogleCredential} onError={setError} />
+            </div>
 
             {/* Quick One-Click Demo Logins */}
             <div className="mt-6 pt-6 border-t border-slate-200/80">
