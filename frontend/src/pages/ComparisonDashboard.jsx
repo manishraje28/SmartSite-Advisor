@@ -153,6 +153,27 @@ export default function ComparisonDashboard() {
     return Math.round(emi);
   };
 
+  // Derives a per-property YoY appreciation estimate from the property's own
+  // AI-computed ROI score (0-100, from the Python scoring engine's per-locality
+  // rental yield / appreciation / market liquidity model) instead of a flat
+  // rate — so two properties in different localities actually show different
+  // growth outlooks instead of an identical "+7.4%/yr" for everything.
+  const getAppreciationRate = (prop) => {
+    const roi = prop.aiScore?.roiPotential;
+    if (roi == null) return null;
+    return 4 + (roi / 100) * 8; // maps 0-100 ROI score to a 4%-12% YoY range
+  };
+
+  // Formats a top-1 nearest-amenity entry (from the backend's real Google
+  // Places + Distance Matrix lookup, `realAmenities.<category>.top[0]`) into
+  // a short "X mins walk/drive" label. Falls back to "Not available" rather
+  // than a fabricated distance when the backend couldn't resolve one.
+  const formatNearest = (entry) => {
+    if (!entry || entry.distanceValue == null || entry.distanceValue >= 999999) return 'Not available';
+    const mode = entry.distanceValue <= 1200 ? 'walk' : 'drive';
+    return entry.durationText ? `${entry.durationText} ${mode}` : entry.distanceText || 'Not available';
+  };
+
   // Helper to synthesize Plain-English Verdict for a property
   const getPlainEnglishVerdict = (prop, index) => {
     const score = prop.aiScore?.overall || 80;
@@ -504,10 +525,21 @@ export default function ComparisonDashboard() {
 
                     <div className="p-4 rounded-2xl bg-indigo-50 border border-indigo-100">
                       <div className="text-xs font-bold text-indigo-900 mb-1">Expected 5-Year Property Value</div>
-                      <div className="text-xl font-extrabold text-indigo-700">
-                        {formatPrice((prop.price || 5000000) * 1.42)}
-                      </div>
-                      <p className="text-[11px] text-indigo-600 mt-1">Based on location infrastructure growth rate (+7.4% / yr)</p>
+                      {(() => {
+                        const rate = getAppreciationRate(prop);
+                        const price = prop.price || 5000000;
+                        const projected = rate != null ? price * Math.pow(1 + rate / 100, 5) : price * 1.42;
+                        return (
+                          <>
+                            <div className="text-xl font-extrabold text-indigo-700">{formatPrice(projected)}</div>
+                            <p className="text-[11px] text-indigo-600 mt-1">
+                              {rate != null
+                                ? `Based on this property's AI ROI score (+${rate.toFixed(1)}% / yr)`
+                                : 'Property not yet AI-scored — showing a generic market estimate'}
+                            </p>
+                          </>
+                        );
+                      })()}
                     </div>
                   </div>
                 )}
@@ -515,24 +547,24 @@ export default function ComparisonDashboard() {
                 {/* ── TAB 3: COMMUTE & CONVENIENCE ── */}
                 {activeTab === 'convenience' && (
                   <div className="space-y-4">
-                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Everyday Distances in Minutes</h4>
-                    
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Everyday Distances (Nearest Real Location)</h4>
+
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
-                        <div className="text-[10px] text-slate-400 font-bold uppercase">Metro Station</div>
-                        <div className="text-sm font-extrabold text-indigo-600 mt-0.5">3 mins walk</div>
+                        <div className="text-[10px] text-slate-400 font-bold uppercase">Metro / Transit</div>
+                        <div className="text-sm font-extrabold text-indigo-600 mt-0.5">{formatNearest(prop.realAmenities?.transit?.top?.[0])}</div>
                       </div>
                       <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
-                        <div className="text-[10px] text-slate-400 font-bold uppercase">Supermarket / DMart</div>
-                        <div className="text-sm font-extrabold text-indigo-600 mt-0.5">5 mins walk</div>
+                        <div className="text-[10px] text-slate-400 font-bold uppercase">Mall</div>
+                        <div className="text-sm font-extrabold text-indigo-600 mt-0.5">{formatNearest(prop.realAmenities?.malls?.top?.[0])}</div>
                       </div>
                       <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
-                        <div className="text-[10px] text-slate-400 font-bold uppercase">Primary School</div>
-                        <div className="text-sm font-extrabold text-emerald-600 mt-0.5">8 mins drive</div>
+                        <div className="text-[10px] text-slate-400 font-bold uppercase">School</div>
+                        <div className="text-sm font-extrabold text-emerald-600 mt-0.5">{formatNearest(prop.realAmenities?.schools?.top?.[0])}</div>
                       </div>
                       <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
-                        <div className="text-[10px] text-slate-400 font-bold uppercase">Multi-specialty Hospital</div>
-                        <div className="text-sm font-extrabold text-emerald-600 mt-0.5">10 mins drive</div>
+                        <div className="text-[10px] text-slate-400 font-bold uppercase">Hospital</div>
+                        <div className="text-sm font-extrabold text-emerald-600 mt-0.5">{formatNearest(prop.realAmenities?.hospitals?.top?.[0])}</div>
                       </div>
                     </div>
 
@@ -545,7 +577,7 @@ export default function ComparisonDashboard() {
                           ? `AQI ${prop.environmentScore.aqi} (${prop.environmentScore.aqiLabel || 'Unknown'})`
                           : 'Not yet scored'}
                       </div>
-                      <p className="text-[11px] text-emerald-700">Low traffic noise, high tree cover score.</p>
+                      <p className="text-[11px] text-emerald-700">{prop.environmentScore?.summary || 'Environmental summary not yet available for this property.'}</p>
                     </div>
                   </div>
                 )}

@@ -111,6 +111,11 @@ const aiScoreSchema = new mongoose.Schema(
     connectivityScore: { type: Number, min: 0, max: 100, default: null },
     amenitiesScore: { type: Number, min: 0, max: 100, default: null },
     roiPotential: { type: Number, min: 0, max: 100, default: null },
+    // Per-sub-score reasoning strings + raw metrics straight from the Python
+    // scoring engine (composite_scorer.py) — kept as-is (schemaless) so the
+    // AI explainer chatbot can quote the engine's actual reasoning instead of
+    // guessing at why a property scored the way it did.
+    breakdown: { type: mongoose.Schema.Types.Mixed, default: null },
     lastScoredAt: { type: Date, default: null },
   },
   { _id: false }
