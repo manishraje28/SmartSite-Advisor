@@ -19,6 +19,7 @@ const app = require('./app');
 const connectDB = require('./src/config/db');
 const { startAutoSyncJob } = require('./src/jobs/autoSyncJob');
 const { startScoringEngine } = require('./src/jobs/scoringEngineProcess');
+const { startScoreBackfillJob } = require('./src/jobs/scoreBackfillJob');
 
 const PORT = process.env.PORT || 5000;
 
@@ -34,6 +35,10 @@ const startServer = async () => {
 
   // Step 4: Start the recurring live-listings sync (once daily).
   startAutoSyncJob();
+
+  // Step 4b: Start the scoring backfill safety net (hourly + once shortly after boot),
+  // so properties that missed scoring (e.g. engine was briefly down) get retried.
+  startScoreBackfillJob();
 
   // Step 5: Start the HTTP server.
   app.listen(PORT, () => {

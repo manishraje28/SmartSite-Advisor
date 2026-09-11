@@ -32,7 +32,7 @@ function detectCategory(question) {
 export default function ExplainerChatbot({ property, color = '#6366f1', onPoiUpdate }) {
   const [messages, setMessages] = useState([
     {
-      text: `Hi! I'm your AI location expert for **${property?.title || 'this property'}**. Ask me about nearby amenities (e.g., "Are there malls nearby?", "Where are the nearest schools?", "Show metro stations") — I'll find the real nearest ones for this exact property.`,
+      text: `Hi! I'm your AI expert for **${property?.title || 'this property'}**. Ask me about nearby amenities (e.g., "Are there malls nearby?") or about its AI score (e.g., "Why is the score 84?", "Why is this suitable for a family?") — I'll answer from this property's real data.`,
       sender: 'bot'
     }
   ]);
@@ -136,8 +136,8 @@ export default function ExplainerChatbot({ property, color = '#6366f1', onPoiUpd
         <div className="h-14 border-b border-slate-800 flex items-center px-4 bg-slate-950/80">
           <Bot size={20} className="text-indigo-400 mr-2" />
           <div>
-            <h3 className="font-bold text-sm text-white">AI Spatial Expert</h3>
-            <p className="text-[10px] text-indigo-300">Real nearest amenities via Google Places, for this property</p>
+            <h3 className="font-bold text-sm text-white">AI Property Expert</h3>
+            <p className="text-[10px] text-indigo-300">Real nearby amenities & AI score reasoning, for this property</p>
           </div>
         </div>
 

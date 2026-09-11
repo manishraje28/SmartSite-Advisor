@@ -9,6 +9,48 @@ const AMENITY_TYPES = {
   parks: 'park',
   transit: 'transit_station',
   supermarkets: 'supermarket',
+  malls: 'shopping_mall',
+};
+
+// Google's Places categories are noisy in practice — a coaching class or a
+// generic shop can come back tagged under `school`/`hospital`/etc. This is a
+// best-effort name-based filter to keep out the most obvious mismatches
+// (e.g. "XYZ Coaching Classes" showing up as the nearest "school"). It can't
+// be perfect — a real school literally named "... Institute" would also get
+// excluded — but it removes most of the noise.
+const NAME_DENYLIST = {
+  schools: [/coaching/i, /tuition/i, /tution/i, /\btrain(er|ing)?\b/i, /\bclasses\b/i, /\binstitute\b/i, /\bacademy\b/i, /driving school/i, /\bonline\b/i, /platform/i, /\byog(a)?\b/i, /\bland\b/i, /real estate/i],
+  malls: [/supermarket/i, /grocery/i, /\bkirana\b/i, /general store/i, /housing society/i, /co-?op(erative)?/i, /\bapartment/i, /\bsaree\b/i, /\boutfit\b/i, /\bwear\b/i, /\bstore\b/i],
+  supermarkets: [/\bmall\b/i],
+  hospitals: [/pharmacy/i, /chemist/i, /medical store/i, /diagnostic/i, /pathology/i],
+  transit: [],
+  parks: [],
+};
+
+// A second, more reliable signal alongside the name denylist above: Google's
+// own `types` array on a result sometimes reveals a mismatch the name alone
+// doesn't (e.g. a residential building tagged `shopping_mall`, or a shop
+// tagged `school`) — exclude results whose types include a category that's
+// clearly unrelated to what we actually asked for.
+const EXCLUDE_TYPES = {
+  schools: ['clothing_store', 'shoe_store', 'store', 'book_store', 'real_estate_agency', 'lodging', 'premise', 'restaurant', 'cafe', 'beauty_salon', 'gym', 'spa', 'real_estate_agency'],
+  malls: ['clothing_store', 'shoe_store', 'electronics_store', 'jewelry_store', 'book_store', 'furniture_store', 'home_goods_store', 'store', 'real_estate_agency', 'lodging', 'premise', 'general_contractor'],
+  supermarkets: ['shopping_mall'],
+  hospitals: ['pharmacy'],
+  transit: [],
+  parks: [],
+};
+
+const isDenylisted = (key, name) => {
+  const patterns = NAME_DENYLIST[key];
+  if (!patterns || !name) return false;
+  return patterns.some((pattern) => pattern.test(name));
+};
+
+const hasExcludedType = (key, types) => {
+  const exclude = EXCLUDE_TYPES[key];
+  if (!exclude || !types) return false;
+  return types.some((t) => exclude.includes(t));
 };
 
 /**
@@ -49,13 +91,16 @@ async function getNearbyAmenities(lat, lng, radius = 2000) {
       );
 
       const results = response.data.results || [];
-      const candidates = results.slice(0, 5).map(r => ({
-        name: r.name,
-        location: r.geometry.location,
-        rating: r.rating,
-        vicinity: r.vicinity,
-        type: key
-      }));
+      const candidates = results
+        .filter((r) => !isDenylisted(key, r.name) && !hasExcludedType(key, r.types))
+        .slice(0, 5)
+        .map(r => ({
+          name: r.name,
+          location: r.geometry.location,
+          rating: r.rating,
+          vicinity: r.vicinity,
+          type: key
+        }));
 
       const withDistance = await getDistancesToAmenities(lat, lng, candidates);
       const withinRadius = withDistance.filter((a) => a.distanceValue <= radius);
