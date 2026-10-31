@@ -11,7 +11,7 @@ Calculates scores for:
 Total: 0-100
 """
 
-from config import AREA_DATA, resolve_area_key
+from config import AREA_DATA, resolve_area_key, MUMBAI_LOCALITIES
 
 
 def calculate_location_score(property_data: dict) -> dict:
@@ -70,7 +70,12 @@ def calculate_location_score(property_data: dict) -> dict:
     else:
         reasoning += "moderate infrastructure"
 
-    reasoning += f". Safety rating is {'good' if components['safetyRating'] >= 17 else 'moderate'}. "
+    safety_source = (
+        "NCRB's official Crime in India 2022 report for Mumbai city"
+        if area_key in MUMBAI_LOCALITIES
+        else "the national average crime rate (NCRB Crime in India 2022) since no separate official figure exists for this city"
+    )
+    reasoning += f". Safety rating is {'good' if components['safetyRating'] >= 17 else 'moderate'}, based on {safety_source}. "
     reasoning += f"Growth potential is {'high' if components['futureGrowthPotential'] >= 14 else 'moderate'}. "
 
     return {

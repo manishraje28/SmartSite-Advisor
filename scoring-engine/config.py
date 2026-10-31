@@ -10,6 +10,55 @@ config.py - Configuration and area knowledge base for Scoring Engine
 CITY_LEVEL_KEYS = {"Mumbai", "Thane", "Navi Mumbai"}
 
 
+# ── Real Crime Data (Safety Sub-Score) ──────────────────────────────────────
+# Source: NCRB "Crime in India 2022" — the government's official annual crime
+# statistics (National Crime Records Bureau, Ministry of Home Affairs).
+#
+# NCRB only tracks total cognizable-crime rate (per 1,00,000 population) for
+# its 19 tracked "million-plus cities" (Census-2011 population > 2M). Of our
+# three target cities, only Mumbai is in that list — Thane and Navi Mumbai are
+# not tracked as separate cities in NCRB's own reporting, so there is no
+# official city-specific rate for them. NCRB also doesn't publish anything
+# below city level, so even within Mumbai there's no official way to say
+# Bandra is safer than Andheri — every Mumbai locality below honestly shares
+# one real, city-wide number rather than a fabricated per-neighborhood delta.
+#
+# Figures used (crimes per 1,00,000 population, 2022):
+#   Mumbai:           367.3  (NCRB Crime in India 2022, 19-metro-city table,
+#                              via https://www.orfonline.org/expert-speak/crime-in-india-s-largest-cities-an-analysis)
+#   National average: 422.2  (NCRB Crime in India 2022, all-India total)
+#   Normalization range: Kolkata 78.2 (safest of the 19 tracked metros) —
+#                         Delhi 1832.6 (least safe of the 19 tracked metros)
+#
+# Thane and Navi Mumbai use the NATIONAL AVERAGE as an honest fallback (a
+# real published government figure, just not city-specific) until a
+# Maharashtra-Police-published, commissionerate-level number becomes
+# available for them.
+_MUMBAI_CRIME_RATE_PER_LAKH = 367.3
+_NATIONAL_AVG_CRIME_RATE_PER_LAKH = 422.2
+_SAFEST_METRO_CRIME_RATE_PER_LAKH = 78.2      # Kolkata, 2022
+_LEAST_SAFE_METRO_CRIME_RATE_PER_LAKH = 1832.6  # Delhi, 2022
+
+
+def _safety_score_from_crime_rate(crime_rate_per_lakh: float) -> int:
+    """Converts a real NCRB crime-rate-per-lakh figure into this engine's
+    0-20 safety sub-score (higher = safer), normalized against the spread of
+    NCRB's own 19 tracked metro cities so the number means something in
+    context instead of being an arbitrary unit conversion."""
+    span = _LEAST_SAFE_METRO_CRIME_RATE_PER_LAKH - _SAFEST_METRO_CRIME_RATE_PER_LAKH
+    normalized = (_LEAST_SAFE_METRO_CRIME_RATE_PER_LAKH - crime_rate_per_lakh) / span
+    return round(max(0.0, min(1.0, normalized)) * 20)
+
+
+MUMBAI_SAFETY_SCORE = _safety_score_from_crime_rate(_MUMBAI_CRIME_RATE_PER_LAKH)
+FALLBACK_SAFETY_SCORE = _safety_score_from_crime_rate(_NATIONAL_AVG_CRIME_RATE_PER_LAKH)
+
+# Localities that share Mumbai's real, official crime rate (vs. the national-
+# average fallback used by Thane/Navi Mumbai localities) — used by
+# location_scorer.py to cite the correct source in its reasoning text.
+MUMBAI_LOCALITIES = {"Bandra", "Powai", "Andheri", "Juhu", "Worli", "Lower Parel", "Borivali", "Mumbai"}
+
+
 def resolve_area_key(location: dict, area_dict: dict) -> str:
     """
     Resolves which knowledge-base entry applies to a property's location.
@@ -49,7 +98,7 @@ AREA_DATA = {
     "Bandra": {
         "popularity": 28,  # Very popular metro area
         "infrastructure": 20,  # Near highway, good roads
-        "safety": 18,  # Relatively safe
+        "safety": MUMBAI_SAFETY_SCORE,  # NCRB Crime in India 2022 — Mumbai city rate
         "growth": 12,  # Mature area, slower growth
         "nearby_amenities": 8,  # Schools within 1km
         "average_appreciation": 9.5,  # % YoY growth
@@ -59,7 +108,7 @@ AREA_DATA = {
     "Powai": {
         "popularity": 26,
         "infrastructure": 22,
-        "safety": 19,
+        "safety": MUMBAI_SAFETY_SCORE,  # NCRB Crime in India 2022 — Mumbai city rate
         "growth": 15,
         "nearby_amenities": 9,
         "average_appreciation": 12.0,
@@ -69,7 +118,7 @@ AREA_DATA = {
     "Thane": {
         "popularity": 18,
         "infrastructure": 16,
-        "safety": 16,
+        "safety": FALLBACK_SAFETY_SCORE,  # No separate NCRB city figure — national average used
         "growth": 14,
         "nearby_amenities": 6,
         "average_appreciation": 8.5,
@@ -79,7 +128,7 @@ AREA_DATA = {
     "Andheri": {
         "popularity": 22,
         "infrastructure": 19,
-        "safety": 15,
+        "safety": MUMBAI_SAFETY_SCORE,  # NCRB Crime in India 2022 — Mumbai city rate
         "growth": 13,
         "nearby_amenities": 7,
         "average_appreciation": 8.0,
@@ -89,7 +138,7 @@ AREA_DATA = {
     "Navi Mumbai": {
         "popularity": 20,
         "infrastructure": 18,
-        "safety": 17,
+        "safety": FALLBACK_SAFETY_SCORE,  # No separate NCRB city figure — national average used
         "growth": 16,
         "nearby_amenities": 8,
         "average_appreciation": 10.0,
@@ -99,7 +148,7 @@ AREA_DATA = {
     "Juhu": {
         "popularity": 27,
         "infrastructure": 19,
-        "safety": 18,
+        "safety": MUMBAI_SAFETY_SCORE,  # NCRB Crime in India 2022 — Mumbai city rate
         "growth": 10,
         "nearby_amenities": 9,
         "average_appreciation": 8.5,
@@ -109,7 +158,7 @@ AREA_DATA = {
     "Worli": {
         "popularity": 27,
         "infrastructure": 21,
-        "safety": 18,
+        "safety": MUMBAI_SAFETY_SCORE,  # NCRB Crime in India 2022 — Mumbai city rate
         "growth": 11,
         "nearby_amenities": 8,
         "average_appreciation": 9.0,
@@ -119,7 +168,7 @@ AREA_DATA = {
     "Lower Parel": {
         "popularity": 26,
         "infrastructure": 22,
-        "safety": 18,
+        "safety": MUMBAI_SAFETY_SCORE,  # NCRB Crime in India 2022 — Mumbai city rate
         "growth": 12,
         "nearby_amenities": 9,
         "average_appreciation": 9.5,
@@ -129,7 +178,7 @@ AREA_DATA = {
     "Borivali": {
         "popularity": 21,
         "infrastructure": 19,
-        "safety": 17,
+        "safety": MUMBAI_SAFETY_SCORE,  # NCRB Crime in India 2022 — Mumbai city rate
         "growth": 13,
         "nearby_amenities": 8,
         "average_appreciation": 9.0,
@@ -139,7 +188,7 @@ AREA_DATA = {
     "Kharghar": {
         "popularity": 18,
         "infrastructure": 16,
-        "safety": 16,
+        "safety": FALLBACK_SAFETY_SCORE,  # No separate NCRB city figure — national average used
         "growth": 17,
         "nearby_amenities": 7,
         "average_appreciation": 11.5,
@@ -149,7 +198,7 @@ AREA_DATA = {
     "Vashi": {
         "popularity": 21,
         "infrastructure": 20,
-        "safety": 17,
+        "safety": FALLBACK_SAFETY_SCORE,  # No separate NCRB city figure — national average used
         "growth": 14,
         "nearby_amenities": 8,
         "average_appreciation": 9.5,
@@ -159,7 +208,7 @@ AREA_DATA = {
     "Seawoods": {
         "popularity": 22,
         "infrastructure": 21,
-        "safety": 18,
+        "safety": FALLBACK_SAFETY_SCORE,  # No separate NCRB city figure — national average used
         "growth": 15,
         "nearby_amenities": 9,
         "average_appreciation": 9.5,
@@ -169,7 +218,7 @@ AREA_DATA = {
     "Ghodbunder Road": {
         "popularity": 19,
         "infrastructure": 17,
-        "safety": 17,
+        "safety": FALLBACK_SAFETY_SCORE,  # No separate NCRB city figure — national average used
         "growth": 15,
         "nearby_amenities": 7,
         "average_appreciation": 9.0,
@@ -179,7 +228,7 @@ AREA_DATA = {
     "Mumbai": {  # City-level fallback for Mumbai addresses whose locality isn't in the table above
         "popularity": 22,
         "infrastructure": 19,
-        "safety": 17,
+        "safety": MUMBAI_SAFETY_SCORE,  # NCRB Crime in India 2022 — Mumbai city rate
         "growth": 12,
         "nearby_amenities": 8,
         "average_appreciation": 9.0,
@@ -189,7 +238,7 @@ AREA_DATA = {
     "Default": {  # Fallback for unmapped areas
         "popularity": 20,
         "infrastructure": 18,
-        "safety": 16,
+        "safety": FALLBACK_SAFETY_SCORE,  # No city recognized — national average used
         "growth": 12,
         "nearby_amenities": 7,
         "average_appreciation": 8.0,
