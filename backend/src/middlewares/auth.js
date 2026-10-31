@@ -26,7 +26,7 @@ const protect = async (req, res, next) => {
       return sendError(res, 401, 'Invalid or expired token');
     }
 
-    req.user = { id: user._id.toString(), role: user.role };
+    req.user = { id: user._id.toString(), role: user.role, email: user.email };
     next();
   } catch (error) {
     if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
@@ -43,4 +43,15 @@ const restrictTo = (...roles) => (req, res, next) => {
   next();
 };
 
-module.exports = { protect, restrictTo };
+// The demo accounts' passwords are shown on the login page, so anyone can use them.
+// Keep them read-only for listings so a visitor can't vandalise shared data.
+const DEMO_EMAILS = ['buyer@smartsite.com', 'seller@smartsite.com'];
+
+const blockDemoAccounts = (req, res, next) => {
+  if (req.user && DEMO_EMAILS.includes(req.user.email)) {
+    return sendError(res, 403, 'Demo accounts are read-only. Create your own account to post or edit listings.');
+  }
+  next();
+};
+
+module.exports = { protect, restrictTo, blockDemoAccounts };

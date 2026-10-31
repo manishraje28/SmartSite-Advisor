@@ -1,19 +1,15 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useAuth } from '../context/AuthContext';
 import { propertyAPI } from '../services/api';
-import {
-  Building2, MapPin, Ruler, Image, Check, ChevronRight,
-  ChevronLeft, Sparkles, AlertTriangle, Home, DollarSign
-} from 'lucide-react';
+import { MapPin, Check, ChevronRight, ChevronLeft, AlertTriangle } from 'lucide-react';
 
 const STEPS = [
-  { label: 'Basics', icon: Building2 },
-  { label: 'Location', icon: MapPin },
-  { label: 'Details', icon: Ruler },
-  { label: 'Amenities', icon: Home },
-  { label: 'Pricing', icon: DollarSign },
+  { label: 'Basics' },
+  { label: 'Location' },
+  { label: 'Details' },
+  { label: 'Amenities' },
+  { label: 'Pricing' },
 ];
 
 const AMENITY_OPTIONS = [
@@ -24,7 +20,6 @@ const AMENITY_OPTIONS = [
 ];
 
 export default function CreateProperty() {
-  const { user } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -37,8 +32,8 @@ export default function CreateProperty() {
     price: '',
     pricePerSqFt: '',
     address: '',
-    city: 'Bangalore',
-    state: 'Karnataka',
+    city: 'Mumbai',
+    state: 'Maharashtra',
     pincode: '',
     bedrooms: '2',
     bathrooms: '2',
@@ -54,9 +49,23 @@ export default function CreateProperty() {
     amenities: ['Lift', 'Parking', 'Security'],
   });
 
+  // { status: 'idle' | 'checking' | 'ok' | 'error', text }
+  const [addressCheck, setAddressCheck] = useState({ status: 'idle', text: '' });
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm(prev => ({ ...prev, [name]: value }));
+    if (['address', 'city', 'pincode'].includes(name)) setAddressCheck({ status: 'idle', text: '' });
+  };
+
+  const verifyAddress = async () => {
+    setAddressCheck({ status: 'checking', text: '' });
+    try {
+      const res = await propertyAPI.previewLocation({ address: form.address, city: form.city, pincode: form.pincode });
+      setAddressCheck({ status: 'ok', text: res.data.data.formattedAddress });
+    } catch (err) {
+      setAddressCheck({ status: 'error', text: err.response?.data?.message || 'Could not verify this address.' });
+    }
   };
 
   const toggleAmenity = (amenity) => {
@@ -79,10 +88,7 @@ export default function CreateProperty() {
         listingType: form.listingType,
         price: Number(form.price),
         pricePerSqFt: Number(form.pricePerSqFt || 0),
-        seller: user?._id,
         location: {
-          type: 'Point',
-          coordinates: [77.5946, 12.9716],
           address: form.address,
           city: form.city,
           state: form.state,
@@ -116,54 +122,38 @@ export default function CreateProperty() {
   };
 
   const nextStep = () => step < STEPS.length - 1 && setStep(step + 1);
+  const canProceed = step !== 1 || addressCheck.status === 'ok';
   const prevStep = () => step > 0 && setStep(step - 1);
 
   return (
-    <div className="container-app pt-24 pb-12 max-w-3xl mx-auto">
+    <div className="container-app pt-8 pb-12 max-w-3xl mx-auto">
       {/* Header */}
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
-        <div className="flex items-center gap-2.5 mb-1.5">
-          <div className="w-9 h-9 rounded-xl bg-emerald-500/15 flex items-center justify-center">
-            <Sparkles size={18} className="text-emerald-400" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold leading-tight">List New Property</h1>
-            <p className="text-xs text-on-surface-variant">Complete all steps to publish your listing</p>
-          </div>
-        </div>
-      </motion.div>
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold tracking-tight text-ink-900">List a property</h1>
+        <p className="text-sm text-ink-500 mt-1">Complete all steps to publish your listing.</p>
+      </div>
 
       {/* Step Indicator */}
-      <div className="glass-card p-5 mb-6">
-        <div className="flex items-center justify-between">
-          {STEPS.map((s, i) => {
-            const Icon = s.icon;
-            const isActive = i === step;
-            const isDone = i < step;
-            return (
-              <div key={s.label} className="flex items-center gap-2.5 flex-1">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-all ${isDone ? 'bg-emerald-500/15' : isActive ? 'bg-indigo-500/15' : 'bg-surface-container-highest'
-                  }`}>
-                  {isDone ? (
-                    <Check size={16} className="text-emerald-400" />
-                  ) : (
-                    <Icon size={16} className={isActive ? 'text-primary' : 'text-on-surface-variant/50'} />
-                  )}
-                </div>
-                <span className={`text-xs font-medium hidden sm:block ${isActive ? 'text-primary' : isDone ? 'text-emerald-400' : 'text-on-surface-variant/50'
-                  }`}>{s.label}</span>
-                {i < STEPS.length - 1 && (
-                  <div className={`flex-1 h-0.5 rounded-full mx-2 ${isDone ? 'bg-emerald-500' : 'bg-surface-container-highest'}`} />
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
+      <ol className="glass-card flex divide-x divide-line mb-6 overflow-hidden">
+        {STEPS.map((s, i) => {
+          const isActive = i === step;
+          const isDone = i < step;
+          return (
+            <li
+              key={s.label}
+              aria-current={isActive ? 'step' : undefined}
+              className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-3 text-xs sm:text-sm border-b-2 ${isActive ? 'border-b-ink-900 text-ink-900 font-semibold' : isDone ? 'border-b-transparent text-moss-700 font-medium' : 'border-b-transparent text-ink-500'}`}
+            >
+              {isDone && <Check size={14} className="flex-shrink-0" />}
+              <span>{s.label}</span>
+            </li>
+          );
+        })}
+      </ol>
 
       {error && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-          className="flex items-center gap-2.5 p-4 rounded-xl bg-error-container/20 border border-error/20 text-error text-sm mb-6">
+          role="alert" className="flex items-center gap-2.5 p-3.5 rounded-md bg-[#fdf1f0] border border-[#f6d3cf] text-[#b42318] text-sm font-medium mb-6">
           <AlertTriangle size={16} /> {error}
         </motion.div>
       )}
@@ -176,24 +166,24 @@ export default function CreateProperty() {
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -20 }}
           transition={{ duration: 0.3 }}
-          className="glass-card p-7"
+          className="glass-card p-6 md:p-8"
         >
           {/* Step 0: Basics */}
           {step === 0 && (
-            <div className="space-y-6">
-              <h3 className="font-semibold text-xl mb-4">Basic Information</h3>
+            <div className="space-y-5">
+              <h2 className="text-lg font-bold text-ink-900 pb-3 border-b border-line">Basic information</h2>
               <div>
-                <label className="label-sm block mb-2">Property Title</label>
-                <input name="title" value={form.title} onChange={handleChange} className="input-field" placeholder="e.g., Prestige Lakeside 3BHK" required />
+                <label htmlFor="cp-title" className="label-sm block mb-1.5">Property title</label>
+                <input id="cp-title" name="title" value={form.title} onChange={handleChange} className="input-field" placeholder="e.g., Prestige Lakeside 3BHK" required />
               </div>
               <div>
-                <label className="label-sm block mb-2">Description</label>
-                <textarea name="description" value={form.description} onChange={handleChange} className="input-field min-h-[120px]" placeholder="Describe your property..." />
+                <label htmlFor="cp-description" className="label-sm block mb-1.5">Description</label>
+                <textarea id="cp-description" name="description" value={form.description} onChange={handleChange} className="input-field min-h-[120px]" placeholder="Describe your property..." />
               </div>
-              <div className="grid grid-cols-2 gap-5">
+              <div className="grid sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="label-sm block mb-2">Property Type</label>
-                  <select name="propertyType" value={form.propertyType} onChange={handleChange} className="input-field">
+                  <label htmlFor="cp-propertyType" className="label-sm block mb-1.5">Property type</label>
+                  <select id="cp-propertyType" name="propertyType" value={form.propertyType} onChange={handleChange} className="input-field">
                     <option value="Apartment">Apartment</option>
                     <option value="Villa">Villa</option>
                     <option value="Plot">Plot</option>
@@ -202,8 +192,8 @@ export default function CreateProperty() {
                   </select>
                 </div>
                 <div>
-                  <label className="label-sm block mb-2">Listing Type</label>
-                  <select name="listingType" value={form.listingType} onChange={handleChange} className="input-field">
+                  <label htmlFor="cp-listingType" className="label-sm block mb-1.5">Listing type</label>
+                  <select id="cp-listingType" name="listingType" value={form.listingType} onChange={handleChange} className="input-field">
                     <option value="Sale">Sale</option>
                     <option value="Rent">Rent</option>
                     <option value="Lease">Lease</option>
@@ -215,25 +205,56 @@ export default function CreateProperty() {
 
           {/* Step 1: Location */}
           {step === 1 && (
-            <div className="space-y-6">
-              <h3 className="font-semibold text-xl mb-4">Location Details</h3>
+            <div className="space-y-5">
+              <h2 className="text-lg font-bold text-ink-900 pb-3 border-b border-line">Location</h2>
               <div>
-                <label className="label-sm block mb-2">Full Address</label>
-                <input name="address" value={form.address} onChange={handleChange} className="input-field" placeholder="Building name, street, area" />
+                <label htmlFor="cp-address" className="label-sm block mb-1.5">Full address</label>
+                <input id="cp-address" name="address" value={form.address} onChange={handleChange} className="input-field" placeholder="Building name, street, area" />
               </div>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="label-sm block mb-2">City</label>
-                  <input name="city" value={form.city} onChange={handleChange} className="input-field" />
+                  <label htmlFor="cp-city" className="label-sm block mb-1.5">City</label>
+                  <select id="cp-city" name="city" value={form.city} onChange={handleChange} className="input-field">
+                    <option value="Mumbai">Mumbai</option>
+                    <option value="Thane">Thane</option>
+                    <option value="Navi Mumbai">Navi Mumbai</option>
+                  </select>
                 </div>
                 <div>
-                  <label className="label-sm block mb-2">State</label>
-                  <input name="state" value={form.state} onChange={handleChange} className="input-field" />
+                  <label htmlFor="cp-state" className="label-sm block mb-1.5">State</label>
+                  <input id="cp-state" name="state" value={form.state} className="input-field" readOnly />
                 </div>
                 <div>
-                  <label className="label-sm block mb-2">Pincode</label>
-                  <input name="pincode" value={form.pincode} onChange={handleChange} className="input-field" placeholder="560001" />
+                  <label htmlFor="cp-pincode" className="label-sm block mb-1.5">Pincode</label>
+                  <input id="cp-pincode" name="pincode" value={form.pincode} onChange={handleChange} className="input-field" placeholder="400050" />
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={verifyAddress}
+                  disabled={!form.address.trim() || addressCheck.status === 'checking'}
+                  className="btn-secondary text-sm gap-2"
+                >
+                  <MapPin size={16} />
+                  {addressCheck.status === 'checking' ? 'Locating...' : 'Verify address on map'}
+                </button>
+                {addressCheck.status === 'ok' && (
+                  <div className="p-3 rounded-md bg-moss-50 border border-moss-100 text-moss-700 text-sm">
+                    <div className="font-semibold flex items-center gap-1.5"><Check size={14} /> Your listing will be placed at:</div>
+                    <div className="mt-0.5">{addressCheck.text}</div>
+                    <div className="text-xs text-ink-500 mt-1">If this isn't the right place, edit the address and verify again.</div>
+                  </div>
+                )}
+                {addressCheck.status === 'error' && (
+                  <div role="alert" className="p-3 rounded-md bg-[#fdf1f0] border border-[#f6d3cf] text-[#b42318] text-sm flex items-start gap-1.5">
+                    <AlertTriangle size={14} className="mt-0.5 flex-shrink-0" /> {addressCheck.text}
+                  </div>
+                )}
+                {addressCheck.status === 'idle' && (
+                  <p className="text-xs text-ink-500">Verify the address to continue. It sets the map pin, nearby places and AQI for your listing.</p>
+                )}
               </div>
             </div>
           )}
@@ -241,62 +262,62 @@ export default function CreateProperty() {
           {/* Step 2: Details */}
           {step === 2 && (
             <div className="space-y-5">
-              <h3 className="font-semibold text-lg mb-2">Property Specifications</h3>
-              <div className="grid grid-cols-3 gap-4">
+              <h2 className="text-lg font-bold text-ink-900 pb-3 border-b border-line">Specifications</h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="label-sm block mb-2">Bedrooms</label>
-                  <input type="number" name="bedrooms" value={form.bedrooms} onChange={handleChange} className="input-field" />
+                  <label htmlFor="cp-bedrooms" className="label-sm block mb-1.5">Bedrooms</label>
+                  <input id="cp-bedrooms" type="number" name="bedrooms" value={form.bedrooms} onChange={handleChange} className="input-field" />
                 </div>
                 <div>
-                  <label className="label-sm block mb-2">Bathrooms</label>
-                  <input type="number" name="bathrooms" value={form.bathrooms} onChange={handleChange} className="input-field" />
+                  <label htmlFor="cp-bathrooms" className="label-sm block mb-1.5">Bathrooms</label>
+                  <input id="cp-bathrooms" type="number" name="bathrooms" value={form.bathrooms} onChange={handleChange} className="input-field" />
                 </div>
                 <div>
-                  <label className="label-sm block mb-2">Balconies</label>
-                  <input type="number" name="balconies" value={form.balconies} onChange={handleChange} className="input-field" />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-5">
-                <div>
-                  <label className="label-sm block mb-2">Carpet Area (sqft)</label>
-                  <input type="number" name="carpetArea" value={form.carpetArea} onChange={handleChange} className="input-field" placeholder="1200" />
-                </div>
-                <div>
-                  <label className="label-sm block mb-2">Built-up Area (sqft)</label>
-                  <input type="number" name="builtUpArea" value={form.builtUpArea} onChange={handleChange} className="input-field" placeholder="1450" />
+                  <label htmlFor="cp-balconies" className="label-sm block mb-1.5">Balconies</label>
+                  <input id="cp-balconies" type="number" name="balconies" value={form.balconies} onChange={handleChange} className="input-field" />
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="label-sm block mb-2">Floor</label>
-                  <input type="number" name="floor" value={form.floor} onChange={handleChange} className="input-field" />
+                  <label htmlFor="cp-carpetArea" className="label-sm block mb-1.5">Carpet area (sq ft)</label>
+                  <input id="cp-carpetArea" type="number" name="carpetArea" value={form.carpetArea} onChange={handleChange} className="input-field" placeholder="1200" />
                 </div>
                 <div>
-                  <label className="label-sm block mb-2">Total Floors</label>
-                  <input type="number" name="totalFloors" value={form.totalFloors} onChange={handleChange} className="input-field" />
-                </div>
-                <div>
-                  <label className="label-sm block mb-2">Parking</label>
-                  <input type="number" name="parkingSpots" value={form.parkingSpots} onChange={handleChange} className="input-field" />
+                  <label htmlFor="cp-builtUpArea" className="label-sm block mb-1.5">Built-up area (sq ft)</label>
+                  <input id="cp-builtUpArea" type="number" name="builtUpArea" value={form.builtUpArea} onChange={handleChange} className="input-field" placeholder="1450" />
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="label-sm block mb-2">Facing</label>
-                  <select name="facing" value={form.facing} onChange={handleChange} className="input-field">
+                  <label htmlFor="cp-floor" className="label-sm block mb-1.5">Floor</label>
+                  <input id="cp-floor" type="number" name="floor" value={form.floor} onChange={handleChange} className="input-field" />
+                </div>
+                <div>
+                  <label htmlFor="cp-totalFloors" className="label-sm block mb-1.5">Total floors</label>
+                  <input id="cp-totalFloors" type="number" name="totalFloors" value={form.totalFloors} onChange={handleChange} className="input-field" />
+                </div>
+                <div>
+                  <label htmlFor="cp-parkingSpots" className="label-sm block mb-1.5">Parking</label>
+                  <input id="cp-parkingSpots" type="number" name="parkingSpots" value={form.parkingSpots} onChange={handleChange} className="input-field" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                <div>
+                  <label htmlFor="cp-facing" className="label-sm block mb-1.5">Facing</label>
+                  <select id="cp-facing" name="facing" value={form.facing} onChange={handleChange} className="input-field">
                     <option>East</option><option>West</option><option>North</option><option>South</option>
                     <option>North-East</option><option>South-East</option>
                   </select>
                 </div>
                 <div>
-                  <label className="label-sm block mb-2">Furnishing</label>
-                  <select name="furnishingStatus" value={form.furnishingStatus} onChange={handleChange} className="input-field">
+                  <label htmlFor="cp-furnishingStatus" className="label-sm block mb-1.5">Furnishing</label>
+                  <select id="cp-furnishingStatus" name="furnishingStatus" value={form.furnishingStatus} onChange={handleChange} className="input-field">
                     <option>Unfurnished</option><option>Semi-Furnished</option><option>Fully-Furnished</option>
                   </select>
                 </div>
                 <div>
-                  <label className="label-sm block mb-2">Age (years)</label>
-                  <input type="number" name="age" value={form.age} onChange={handleChange} className="input-field" />
+                  <label htmlFor="cp-age" className="label-sm block mb-1.5">Age (years)</label>
+                  <input id="cp-age" type="number" name="age" value={form.age} onChange={handleChange} className="input-field" />
                 </div>
               </div>
             </div>
@@ -304,58 +325,57 @@ export default function CreateProperty() {
 
           {/* Step 3: Amenities */}
           {step === 3 && (
-            <div className="space-y-6">
-              <h3 className="font-semibold text-xl mb-4">Select Amenities</h3>
+            <div className="space-y-5">
+              <h2 className="text-lg font-bold text-ink-900 pb-3 border-b border-line">Amenities</h2>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 {AMENITY_OPTIONS.map(amenity => (
                   <button
                     key={amenity}
                     type="button"
                     onClick={() => toggleAmenity(amenity)}
-                    className={`px-4 py-3 rounded-xl text-sm font-medium transition-all text-left ${form.amenities.includes(amenity)
-                        ? 'bg-indigo-500/15 text-primary border border-indigo-500/25'
-                        : 'bg-surface-container-highest text-on-surface-variant hover:bg-surface-container-highest/80 border border-transparent'
+                    aria-pressed={form.amenities.includes(amenity)}
+                    className={`px-3 py-2.5 rounded-md text-sm font-medium transition-colors text-left flex items-center gap-2 border ${form.amenities.includes(amenity)
+                        ? 'bg-ink-50 text-ink-900 border-ink-700'
+                        : 'bg-white text-ink-700 border-line hover:border-ink-300'
                       }`}
                   >
-                    {form.amenities.includes(amenity) ? '✓  ' : ''}{amenity}
+                    <Check size={14} className={form.amenities.includes(amenity) ? 'text-ink-900' : 'invisible'} />
+                    {amenity}
                   </button>
                 ))}
               </div>
-              <p className="text-xs text-on-surface-variant mt-4">{form.amenities.length} amenities selected</p>
+              <p className="text-xs text-ink-500 tabular">{form.amenities.length} amenities selected</p>
             </div>
           )}
 
           {/* Step 4: Pricing */}
           {step === 4 && (
             <div className="space-y-5">
-              <h3 className="font-semibold text-lg mb-2">Pricing</h3>
+              <h2 className="text-lg font-bold text-ink-900 pb-3 border-b border-line">Pricing</h2>
               <div>
-                <label className="label-sm block mb-2">Total Price (₹)</label>
-                <input type="number" name="price" value={form.price} onChange={handleChange} className="input-field" placeholder="12000000" required />
+                <label htmlFor="cp-price" className="label-sm block mb-1.5">Total price (₹)</label>
+                <input id="cp-price" type="number" name="price" value={form.price} onChange={handleChange} className="input-field tabular" placeholder="12000000" required />
                 {form.price && (
-                  <p className="text-xs text-on-surface-variant mt-2">
+                  <p className="text-xs text-ink-500 mt-1.5 tabular">
                     = ₹{(Number(form.price) / 10000000).toFixed(2)} Cr
                   </p>
                 )}
               </div>
               <div>
-                <label className="label-sm block mb-2">Price per sqft (₹)</label>
-                <input type="number" name="pricePerSqFt" value={form.pricePerSqFt} onChange={handleChange} className="input-field" placeholder="8000" />
+                <label htmlFor="cp-pricePerSqFt" className="label-sm block mb-1.5">Price per sq ft (₹)</label>
+                <input id="cp-pricePerSqFt" type="number" name="pricePerSqFt" value={form.pricePerSqFt} onChange={handleChange} className="input-field" placeholder="8000" />
               </div>
 
               {/* Summary */}
-              <div className="p-5 rounded-xl bg-gradient-to-r from-emerald-500/10 to-indigo-500/10 border border-emerald-500/10 mt-2">
-                <h4 className="text-sm font-semibold mb-4 flex items-center gap-2">
-                  <Sparkles size={14} className="text-emerald-400" />
-                  Listing Summary
-                </h4>
-                <div className="grid grid-cols-2 gap-3 text-xs">
-                  <div><span className="text-on-surface-variant">Title:</span> <span className="text-on-surface font-medium">{form.title || '—'}</span></div>
-                  <div><span className="text-on-surface-variant">Type:</span> <span className="text-on-surface font-medium">{form.propertyType}</span></div>
-                  <div><span className="text-on-surface-variant">Location:</span> <span className="text-on-surface font-medium">{form.city}</span></div>
-                  <div><span className="text-on-surface-variant">Size:</span> <span className="text-on-surface font-medium">{form.carpetArea || '—'} sqft</span></div>
-                  <div><span className="text-on-surface-variant">Config:</span> <span className="text-on-surface font-medium">{form.bedrooms}BHK</span></div>
-                  <div><span className="text-on-surface-variant">Amenities:</span> <span className="text-on-surface font-medium">{form.amenities.length} selected</span></div>
+              <div className="pt-5 border-t border-line">
+                <h3 className="text-sm font-bold text-ink-900 mb-3">Listing summary</h3>
+                <div className="grid sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                  <div><span className="text-ink-500">Title:</span> <span className="text-ink-900 font-medium tabular">{form.title || '—'}</span></div>
+                  <div><span className="text-ink-500">Type:</span> <span className="text-ink-900 font-medium tabular">{form.propertyType}</span></div>
+                  <div><span className="text-ink-500">Location:</span> <span className="text-ink-900 font-medium tabular">{form.city}</span></div>
+                  <div><span className="text-ink-500">Size:</span> <span className="text-ink-900 font-medium tabular">{form.carpetArea || '—'} sqft</span></div>
+                  <div><span className="text-ink-500">Config:</span> <span className="text-ink-900 font-medium tabular">{form.bedrooms}BHK</span></div>
+                  <div><span className="text-ink-500">Amenities:</span> <span className="text-ink-900 font-medium tabular">{form.amenities.length} selected</span></div>
                 </div>
               </div>
             </div>
@@ -368,14 +388,14 @@ export default function CreateProperty() {
         <button
           onClick={prevStep}
           disabled={step === 0}
-          className="btn-secondary flex items-center gap-2 disabled:opacity-30"
+          className="btn-secondary text-sm gap-2"
         >
           <ChevronLeft size={16} />
           Previous
         </button>
 
         {step < STEPS.length - 1 ? (
-          <button onClick={nextStep} className="btn-primary flex items-center gap-2">
+          <button onClick={nextStep} disabled={!canProceed} className="btn-primary text-sm gap-2">
             Next
             <ChevronRight size={16} />
           </button>
@@ -383,15 +403,12 @@ export default function CreateProperty() {
           <button
             onClick={handleSubmit}
             disabled={loading || !form.title || !form.price}
-            className="btn-primary flex items-center gap-2 disabled:opacity-50"
+            className="btn-emerald text-sm gap-2"
           >
             {loading ? (
               <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
             ) : (
-              <>
-                <Sparkles size={16} />
-                Publish Listing
-              </>
+'Publish listing'
             )}
           </button>
         )}

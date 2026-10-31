@@ -27,8 +27,8 @@ Return valid JSON with keys:
 
     const userPrompt = `Property Name: ${property.title || property.name}
 Current Price: ₹${property.price}
-City: ${property.location?.city || 'Bangalore'}
-BHK: ${property.specifications?.bedrooms || 3}
+City: ${[property.location?.address, property.location?.city].filter(Boolean).join(', ') || 'Unknown'}
+BHK: ${property.specifications?.bedrooms ?? 'Unknown'}
 Amenities: ${JSON.stringify(property.amenities || [])}
 Description: ${property.description || ''}
 

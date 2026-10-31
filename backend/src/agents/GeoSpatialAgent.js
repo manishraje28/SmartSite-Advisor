@@ -1,78 +1,103 @@
 const { callGroqAgent } = require('./groqClient');
+const Property = require('../models/Property');
+const { enhancePropertyWithLivability } = require('../services/nearbyAmenitiesService');
 
 /**
  * GeoSpatial & Environmental Health Agent
+ *
+ * Every number in the output (distances, AQI, geoScore) comes from the real
+ * Google Places / Distance Matrix and OpenWeatherMap integrations. The LLM is
+ * only used to turn those facts into a plain-English verdict — it never
+ * supplies a distance or an AQI value itself.
  */
-class GeoSpatialAgent {
-  static async evaluateLocation(property) {
-    const systemPrompt = `You are 'GeoSpatial & Environmental Health Agent', an autonomous location & livability auditor.
-Your job is to evaluate neighborhood connectivity, peak transit times, air quality (AQI), school/hospital radiuses, and green cover.
 
-Analyze the property location and return a JSON output with keys:
+const formatPlace = (entry) => {
+  if (!entry || entry.distanceValue == null || entry.distanceValue >= 999999) return 'Not available';
+  return `${entry.name}: ${entry.distanceText} (${entry.durationText} drive)`;
+};
+
+const average = (values) => {
+  const real = values.filter((v) => typeof v === 'number');
+  return real.length ? Math.round(real.reduce((a, b) => a + b, 0) / real.length) : null;
+};
+
+const loadProperty = async (property) => {
+  if (property?.location?.coordinates?.length === 2) return property;
+  if (property?._id) return Property.findById(property._id).lean();
+  return null;
+};
+
+const factsVerdict = ({ commuteEstimates, aqiIndex, aqiCategory }) => {
+  const parts = [`Nearest metro/transit: ${commuteEstimates.nearestMetro}.`];
+  parts.push(`Nearest school: ${commuteEstimates.nearestSchool}.`);
+  parts.push(`Nearest hospital: ${commuteEstimates.nearestHospital}.`);
+  if (aqiIndex != null) parts.push(`Current air quality: AQI ${aqiIndex}${aqiCategory ? ` (${aqiCategory})` : ''}.`);
+  return parts.join(' ');
+};
+
+class GeoSpatialAgent {
+  static async evaluateLocation(inputProperty) {
+    const property = await loadProperty(inputProperty);
+    if (!property) {
+      return {
+        geoScore: null,
+        aqiIndex: null,
+        aqiCategory: null,
+        commuteEstimates: {},
+        neighborhoodVerdict: 'No coordinates are available for this property, so its location could not be audited.',
+        connectivityHighlights: [],
+      };
+    }
+
+    const enhanced = await enhancePropertyWithLivability(property);
+    const amenities = enhanced.realAmenities || {};
+    const env = enhanced.environmentScore || {};
+
+    const commuteEstimates = {
+      nearestMetro: formatPlace(amenities.transit?.top?.[0]),
+      supermarket: formatPlace(amenities.supermarkets?.top?.[0]),
+      nearestMall: formatPlace(amenities.malls?.top?.[0]),
+      nearestSchool: formatPlace(amenities.schools?.top?.[0]),
+      nearestHospital: formatPlace(amenities.hospitals?.top?.[0]),
+    };
+
+    const facts = {
+      geoScore: average([enhanced.livabilityScore, enhanced.connectivityScore, env.overall]),
+      aqiIndex: env.aqi ?? null,
+      aqiCategory: env.aqiLabel ?? null,
+      commuteEstimates,
+    };
+
+    const systemPrompt = `You are the 'GeoSpatial & Environmental Health Agent' for a real-estate app.
+You are given REAL, measured location facts for one property. Write a short plain-English verdict on its livability and 2-3 connectivity highlights.
+Only use the facts given. Never invent a distance, travel time, place name or AQI value, and never contradict the facts. If a fact says "Not available", don't guess it.
+
+Return valid JSON only:
 {
-  "geoScore": number (0-100),
-  "aqiIndex": number (e.g. 42),
-  "aqiCategory": string (e.g. "Clean & Healthy Air", "Moderate Air Quality"),
-  "commuteEstimates": {
-    "nearestMetro": string (e.g. "4 mins walk (350m)"),
-    "supermarket": string (e.g. "5 mins walk"),
-    "nearestSchool": string (e.g. "8 mins drive (2.1 km)"),
-    "nearestHospital": string (e.g. "10 mins drive (3.5 km)"),
-    "itPark": string (e.g. "15 mins drive (5.2 km)")
-  },
-  "neighborhoodVerdict": string (Plain-English summary of neighborhood livability),
+  "neighborhoodVerdict": string,
   "connectivityHighlights": string[]
 }`;
 
-    const userPrompt = `Property Location: ${property.location?.city || property.location || 'Bangalore'}
-Property Title: ${property.title || property.name}
-Coordinates: ${JSON.stringify(property.location?.coordinates || { lat: 12.9716, lng: 77.5946 })}
-
-Audit this location and return valid JSON.`;
+    const userPrompt = `Property: ${property.title || 'Unnamed property'}
+Address: ${[property.location?.address, property.location?.city].filter(Boolean).join(', ')}
+Measured facts: ${JSON.stringify(facts)}`;
 
     try {
-      const rawResponse = await callGroqAgent({
-        systemPrompt,
-        userPrompt,
-        temperature: 0.3,
-        maxTokens: 800
-      });
-
+      const rawResponse = await callGroqAgent({ systemPrompt, userPrompt, temperature: 0.3, maxTokens: 500 });
       const jsonMatch = rawResponse.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
-        return JSON.parse(jsonMatch[0]);
+        const { neighborhoodVerdict, connectivityHighlights } = JSON.parse(jsonMatch[0]);
+        return {
+          ...facts,
+          neighborhoodVerdict: neighborhoodVerdict || factsVerdict(facts),
+          connectivityHighlights: Array.isArray(connectivityHighlights) ? connectivityHighlights : [],
+        };
       }
-      return {
-        geoScore: 91,
-        aqiIndex: 45,
-        aqiCategory: "Good Clean Air",
-        commuteEstimates: {
-          nearestMetro: "5 mins walk",
-          supermarket: "3 mins walk",
-          nearestSchool: "7 mins drive",
-          nearestHospital: "12 mins drive",
-          itPark: "15 mins drive"
-        },
-        neighborhoodVerdict: rawResponse,
-        connectivityHighlights: ["Direct metro access", "Low traffic density corridor"]
-      };
     } catch (error) {
-      console.error("GeoSpatialAgent Error:", error);
-      return {
-        geoScore: 89,
-        aqiIndex: 48,
-        aqiCategory: "Good Clean Air",
-        commuteEstimates: {
-          nearestMetro: "6 mins walk",
-          supermarket: "4 mins walk",
-          nearestSchool: "8 mins drive",
-          nearestHospital: "10 mins drive",
-          itPark: "18 mins drive"
-        },
-        neighborhoodVerdict: "Excellent urban connectivity with quick walk times to essentials.",
-        connectivityHighlights: ["Walking distance to Metro", "Close to primary IT hubs"]
-      };
+      console.error('GeoSpatialAgent Error:', error.message);
     }
+
+    return { ...facts, neighborhoodVerdict: factsVerdict(facts), connectivityHighlights: [] };
   }
 }
 

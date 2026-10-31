@@ -27,7 +27,13 @@ const agentRoutes = require('./src/routes/agentRoutes');
 const errorHandler = require('./src/middlewares/errorHandler');
 const notFound = require('./src/middlewares/notFound');
 
+const rateLimit = require('./src/middlewares/rateLimit');
+
 const app = express();
+
+// Behind Render/other proxies, req.ip must come from X-Forwarded-For or every
+// visitor looks like the proxy (and shares one rate-limit bucket).
+app.set('trust proxy', 1);
 
 /**
  * helmet: Sets secure HTTP response headers automatically.
@@ -37,11 +43,16 @@ app.use(helmet());
 
 /**
  * cors: Cross-Origin Resource Sharing.
- * Modified to allow all origins temporarily while we resolve VPN routing issue.
+ * CLIENT_ORIGIN is a comma-separated list of allowed frontend origins. Without it,
+ * any origin is allowed — fine on a dev machine, refused in production.
  */
+const allowedOrigins = (process.env.CLIENT_ORIGIN || '').split(',').map((o) => o.trim()).filter(Boolean);
+if (!allowedOrigins.length && process.env.NODE_ENV === 'production') {
+  throw new Error('CLIENT_ORIGIN must be set in production (e.g. https://smartsite.onrender.com).');
+}
 app.use(
   cors({
-    origin: '*',
+    origin: allowedOrigins.length ? allowedOrigins : '*',
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization'],
   })
@@ -81,6 +92,8 @@ if (process.env.NODE_ENV === 'development') {
 // ─────────────────────────────────────────────
 
 app.use('/api/health', healthRoutes);
+// 20 sign-in/sign-up attempts per IP per 15 minutes slows password guessing.
+app.use(['/api/auth/login', '/api/auth/register', '/api/auth/google'], rateLimit({ windowMs: 15 * 60 * 1000, max: 20 }));
 app.use('/api/auth', authRoutes);
 app.use('/api/buyer', buyerRoutes);
 app.use('/api/seller', sellerRoutes);

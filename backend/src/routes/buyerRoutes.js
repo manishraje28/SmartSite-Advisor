@@ -3,6 +3,7 @@ const preferenceController = require('../controllers/preferenceController');
 const matchmakingService = require('../services/matchmakingService');
 const Property = require('../models/Property');
 const { getNearbyAmenities } = require('../services/nearbyAmenitiesService');
+const { getPriceFairness } = require('../services/priceFairnessService');
 const Groq = require('groq-sdk');
 const { protect, restrictTo } = require('../middlewares/auth');
 const groq = process.env.GROQ_API_KEY ? new Groq({ apiKey: process.env.GROQ_API_KEY }) : null;
@@ -69,7 +70,10 @@ router.post('/compare', async (req, res) => {
 
     const compared = await Promise.all(propertiesToProcess.map(async property => {
       // Fetch Google Places data and calculate new scores!
-      const enhancedProperty = await enhancePropertyWithLivability(property);
+      const [enhancedProperty, priceFairness] = await Promise.all([
+        enhancePropertyWithLivability(property),
+        getPriceFairness(property),
+      ]);
 
       // Without buyer preferences there's no personalized fit to compute, so fall back
       // to the property's own aiScore — but honestly: a property that hasn't been
@@ -122,7 +126,9 @@ router.post('/compare', async (req, res) => {
         insights.push({ type: 'positive', text: 'Budget-friendly option' });
       }
 
-      return { ...enhancedProperty, matchPercentage, insights };
+      // matchIsPersonal tells the UI whether matchPercentage reflects this buyer's
+      // weights (and so can differ from aiScore.overall) or is just aiScore.overall.
+      return { ...enhancedProperty, priceFairness, matchPercentage, matchIsPersonal: !!preferences, insights };
     }));
 
     // Sort by match percentage
@@ -210,6 +216,9 @@ router.post('/explain', async (req, res) => {
       if (property.environmentScore.summary) contextStr += `Environment summary: ${property.environmentScore.summary}\n`;
     }
 
+    const priceFairness = await getPriceFairness(property);
+    contextStr += `\nPrice check vs. nearby listings: ${priceFairness.message}\n`;
+
     contextStr += `\nCurrent Search Radius: ${customRadius / 1000} km\n`;
     contextStr += `Nearby Amenities Found (Top 3 per category):\n`;
     Object.entries(amenities).forEach(([type, data]) => {
@@ -220,7 +229,7 @@ router.post('/explain', async (req, res) => {
       messages: [
         {
           role: 'system',
-          content: `You are an expert Real Estate Explainability AI for "SmartSite". You answer two kinds of questions about this exact property: (1) nearby amenities (like "Are there any schools within 10km?"), and (2) why the property's AI Suitability Score (or any of its sub-scores) is what it is (like "Why is the score 84?" or "Why is this suitable for a family?").
+          content: `You are an expert Real Estate Explainability AI for "SmartSite". You answer three kinds of questions about this exact property: (1) nearby amenities (like "Are there any schools within 10km?"), (2) why the property's AI Suitability Score (or any of its sub-scores) is what it is (like "Why is the score 84?" or "Why is this suitable for a family?"), and (3) whether the price is fair (like "Is this overpriced?") — answer these only from the price check line above.
 
           Context:\n${contextStr}\n
 

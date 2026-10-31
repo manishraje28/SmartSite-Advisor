@@ -27,7 +27,10 @@ function trySpawn(candidates) {
   }
 
   const [executable, ...rest] = candidates;
-  const proc = spawn(executable, ['app.py'], { cwd: SCORING_ENGINE_DIR });
+  // The child inherits our env, including the backend's own PORT, so pin it to the
+  // port scoringService will actually call.
+  const port = new URL(process.env.SCORING_ENGINE_URL || 'http://localhost:5001').port || '5001';
+  const proc = spawn(executable, ['app.py'], { cwd: SCORING_ENGINE_DIR, env: { ...process.env, PORT: port } });
 
   let settled = false;
 

@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { authAPI } from '../services/api';
 import GoogleSignInButton from '../components/GoogleSignInButton';
-import { UserPlus, Mail, Lock, User, Phone, Building2, Sparkles, AlertTriangle, ShieldCheck, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Mail, Lock, User, Phone, Building2, AlertTriangle, Home } from 'lucide-react';
 
 export default function Register() {
   const [form, setForm] = useState({ name: '', email: '', password: '', phone: '', role: 'buyer' });
@@ -52,99 +52,85 @@ export default function Register() {
     }
   };
 
+  const roleClass = (active) =>
+    `flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold transition-colors ${
+      active ? 'bg-ink-900 text-white' : 'bg-white text-ink-700 hover:bg-ink-50'
+    }`;
+
   return (
-    <div className="min-h-[85vh] flex items-center justify-center py-6 px-4">
-      <div className="w-full max-w-5xl bg-white rounded-3xl border border-slate-200/80 shadow-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-12">
-        {/* Left Section - Hero Brand Feature */}
-        <div className="lg:col-span-5 bg-slate-900 text-white p-8 lg:p-12 relative flex flex-col justify-between overflow-hidden">
-          <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-500/20 rounded-full blur-[100px] pointer-events-none" />
-          <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-500/20 rounded-full blur-[90px] pointer-events-none" />
-
-          <div className="relative z-10">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-500 via-teal-500 to-indigo-500 flex items-center justify-center mb-6 shadow-lg shadow-emerald-500/30">
-              <ShieldCheck size={28} className="text-white" />
-            </div>
-            <span className="badge-ai !text-emerald-300 !bg-emerald-500/20 border-emerald-400/30 mb-3">
-              Join SmartSite Platform
-            </span>
-            <h2 className="text-3xl font-extrabold text-white tracking-tight mb-3">
-              Create Your Intelligence Account
-            </h2>
-            <p className="text-slate-400 text-sm leading-relaxed mb-8">
-              Unlock multi-agent property insights, tailored lifestyle weighting, and explainable ROI scoring.
+    <div className="min-h-[85vh] flex items-center justify-center py-10 px-4">
+      <div className="w-full max-w-5xl bg-white rounded-lg border border-line overflow-hidden grid grid-cols-1 lg:grid-cols-12">
+        {/* Left Section - photo */}
+        <div className="hidden lg:block lg:col-span-5 relative bg-ink-900">
+          <img
+            src="https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1000&q=80"
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover opacity-70"
+          />
+          <div className="absolute inset-x-0 bottom-0 p-8 bg-gradient-to-t from-ink-950/90 to-transparent text-white">
+            <p className="text-lg font-semibold leading-snug mb-4">
+              Set your priorities once and see how every listing scores against them.
             </p>
-          </div>
-
-          <div className="relative z-10 space-y-3 pt-6 border-t border-slate-800">
-            {[
-              'Personalized AI property match score',
-              'Environment AQI & noise metrics',
-              'Real-time valuation & ROI engine',
-              'Seller inventory analytics dashboard'
-            ].map((feat, idx) => (
-              <div key={idx} className="flex items-center gap-2.5 text-xs text-slate-300 font-medium">
-                <CheckCircle2 size={15} className="text-emerald-400 flex-shrink-0" />
-                <span>{feat}</span>
-              </div>
-            ))}
+            <ul className="space-y-1.5 text-sm text-ink-200">
+              <li>Match score based on your priorities</li>
+              <li>Air quality (AQI) and noise for the area</li>
+              <li>Valuation and rental return estimates</li>
+              <li>Listing analytics for sellers</li>
+            </ul>
           </div>
         </div>
 
-        {/* Right Section - Registration Form */}
+        {/* Right Section - Form */}
         <div className="lg:col-span-7 p-8 lg:p-12 flex flex-col justify-center bg-white">
           <div className="max-w-md mx-auto w-full">
-            <div className="flex items-center gap-2 mb-2">
-              <Sparkles size={20} className="text-emerald-600" />
-              <h1 className="text-2xl font-bold text-slate-900">Get Started Free</h1>
-            </div>
-            <p className="text-xs text-slate-500 mb-6">Select account role and enter details to get started</p>
+            <h1 className="text-2xl font-bold text-ink-900 mb-1">Create an account</h1>
+            <p className="text-sm text-ink-500 mb-6">Choose an account type, then enter your details. It's free.</p>
 
             {error && (
               <motion.div
                 initial={{ opacity: 0, y: -8 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="flex items-center gap-2.5 p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium mb-5"
+                role="alert"
+                className="flex items-center gap-2.5 p-3.5 rounded-md bg-[#fdf1f0] border border-[#f6d3cf] text-[#b42318] text-sm font-medium mb-5"
               >
-                <AlertTriangle size={18} className="flex-shrink-0 text-rose-600" />
+                <AlertTriangle size={18} className="flex-shrink-0" />
                 <span>{error}</span>
               </motion.div>
             )}
 
             {/* Role Toggle Selector */}
-            <div className="grid grid-cols-2 gap-3 mb-6 p-1.5 bg-slate-100/80 rounded-2xl border border-slate-200">
+            <div className="flex rounded-md border border-ink-200 overflow-hidden mb-6" role="group" aria-label="Account type">
               <button
                 type="button"
+                aria-pressed={form.role === 'buyer'}
                 onClick={() => setForm(prev => ({ ...prev, role: 'buyer' }))}
-                className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
-                  form.role === 'buyer'
-                    ? 'bg-white text-indigo-600 shadow-sm border border-slate-200/80'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
+                className={roleClass(form.role === 'buyer')}
               >
-                <span>🏠 Buyer Account</span>
+                <Home size={15} />
+                <span>I'm buying</span>
               </button>
 
               <button
                 type="button"
+                aria-pressed={form.role === 'seller'}
                 onClick={() => setForm(prev => ({ ...prev, role: 'seller' }))}
-                className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
-                  form.role === 'seller'
-                    ? 'bg-white text-emerald-600 shadow-sm border border-slate-200/80'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
+                className={`${roleClass(form.role === 'seller')} border-l border-ink-200`}
               >
-                <span>📊 Seller / Developer</span>
+                <Building2 size={15} />
+                <span>Seller or developer</span>
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-3.5">
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="label-sm block mb-1 text-slate-700 font-bold">Full Name</label>
+                <label htmlFor="register-name" className="label-sm block mb-1.5">Full name</label>
                 <div className="relative">
-                  <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-400" />
                   <input
+                    id="register-name"
                     name="name"
                     type="text"
+                    autoComplete="name"
                     value={form.name}
                     onChange={handleChange}
                     className="input-field !pl-10"
@@ -155,12 +141,14 @@ export default function Register() {
               </div>
 
               <div>
-                <label className="label-sm block mb-1 text-slate-700 font-bold">Email Address</label>
+                <label htmlFor="register-email" className="label-sm block mb-1.5">Email</label>
                 <div className="relative">
-                  <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-400" />
                   <input
+                    id="register-email"
                     name="email"
                     type="email"
+                    autoComplete="email"
                     value={form.email}
                     onChange={handleChange}
                     className="input-field !pl-10"
@@ -171,12 +159,16 @@ export default function Register() {
               </div>
 
               <div>
-                <label className="label-sm block mb-1 text-slate-700 font-bold">Phone Number (Optional)</label>
+                <label htmlFor="register-phone" className="label-sm block mb-1.5">
+                  Phone number <span className="font-normal text-ink-500">(optional)</span>
+                </label>
                 <div className="relative">
-                  <Phone size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <Phone size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-400" />
                   <input
+                    id="register-phone"
                     name="phone"
                     type="tel"
+                    autoComplete="tel"
                     value={form.phone}
                     onChange={handleChange}
                     className="input-field !pl-10"
@@ -186,16 +178,18 @@ export default function Register() {
               </div>
 
               <div>
-                <label className="label-sm block mb-1 text-slate-700 font-bold">Password</label>
+                <label htmlFor="register-password" className="label-sm block mb-1.5">Password</label>
                 <div className="relative">
-                  <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-400" />
                   <input
+                    id="register-password"
                     name="password"
                     type="password"
+                    autoComplete="new-password"
                     value={form.password}
                     onChange={handleChange}
                     className="input-field !pl-10"
-                    placeholder="Min 6 characters"
+                    placeholder="At least 6 characters"
                     required
                   />
                 </div>
@@ -204,33 +198,30 @@ export default function Register() {
               <button
                 type="submit"
                 disabled={loading}
-                className="btn-primary w-full !py-3 flex items-center justify-center gap-2 text-sm mt-2"
+                className="btn-primary w-full !py-3 flex items-center justify-center gap-2 text-sm"
               >
                 {loading ? (
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 ) : (
-                  <>
-                    <UserPlus size={16} />
-                    <span>Create Free Account</span>
-                  </>
+                  <span>Create account</span>
                 )}
               </button>
             </form>
 
             <div className="mt-5 flex items-center gap-3">
-              <div className="h-px flex-1 bg-slate-200" />
-              <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">or</span>
-              <div className="h-px flex-1 bg-slate-200" />
+              <div className="h-px flex-1 bg-line" />
+              <span className="text-xs text-ink-400">or</span>
+              <div className="h-px flex-1 bg-line" />
             </div>
 
             <div className="mt-5">
               <GoogleSignInButton onCredential={handleGoogleCredential} onError={setError} text="signup_with" />
             </div>
 
-            <p className="text-center text-xs text-slate-500 mt-6">
-              Already registered?{' '}
-              <Link to="/login" className="text-indigo-600 font-bold hover:underline inline-flex items-center gap-1">
-                Sign in to your account <ArrowRight size={12} />
+            <p className="text-center text-sm text-ink-500 mt-6">
+              Already have an account?{' '}
+              <Link to="/login" className="text-brick-600 font-semibold hover:underline">
+                Sign in
               </Link>
             </p>
           </div>

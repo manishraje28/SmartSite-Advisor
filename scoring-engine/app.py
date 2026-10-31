@@ -108,5 +108,12 @@ def not_found(error):
 
 
 if __name__ == '__main__':
-    # Run Flask app on port 5001 (port 5000 may have conflicts)
-    app.run(debug=True, host='0.0.0.0', port=5001)
+    # Local development only; production runs `gunicorn app:app` instead.
+    # Debug mode exposes an interactive code console, so it is opt-in (FLASK_DEBUG=1)
+    # and the dev server only listens on localhost.
+    import os
+    app.run(
+        debug=os.environ.get('FLASK_DEBUG') == '1',
+        host='127.0.0.1',
+        port=int(os.environ.get('PORT', 5001)),  # 5001: port 5000 is the Node backend
+    )

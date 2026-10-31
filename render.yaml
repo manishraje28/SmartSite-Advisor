@@ -1,0 +1,76 @@
+# Render Blueprint: Render dashboard -> New -> Blueprint -> pick this repo.
+# Values marked `sync: false` are secrets/URLs you paste in the dashboard on first deploy.
+services:
+  # Python scoring engine (Flask, served by gunicorn)
+  - type: web
+    name: smartsite-scoring
+    runtime: python
+    plan: free
+    rootDir: scoring-engine
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 2
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+
+  # Node/Express API
+  - type: web
+    name: smartsite-api
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm ci --omit=dev
+    startCommand: node server.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      # Playwright can't run on the free tier; don't download its browsers either.
+      - key: ENABLE_SCRAPER
+        value: "false"
+      - key: PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD
+        value: "1"
+      - key: MONGO_URI
+        sync: false
+      # e.g. https://smartsite-web.onrender.com (comma-separate several origins)
+      - key: CLIENT_ORIGIN
+        sync: false
+      # e.g. https://smartsite-scoring.onrender.com
+      - key: SCORING_ENGINE_URL
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GOOGLE_MAPS_API_KEY
+        sync: false
+      - key: OPENWEATHERMAP_API_KEY
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+
+  # React frontend (static build on Render's CDN)
+  - type: web
+    name: smartsite-web
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    # Client-side routing: serve index.html for every path so /property/123 survives a refresh.
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      # e.g. https://smartsite-api.onrender.com/api
+      - key: VITE_APP_API_BASE_URL
+        sync: false
+      - key: VITE_GOOGLE_MAPS_API_KEY
+        sync: false
+      - key: VITE_GOOGLE_CLIENT_ID
+        sync: false

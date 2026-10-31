@@ -22,10 +22,10 @@ function ProtectedRoute({ children, requiredRole }) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white">
+      <div className="min-h-screen flex items-center justify-center bg-page">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-10 h-10 border-3 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
-          <span className="text-sm text-slate-400 font-medium">Loading SmartSite...</span>
+          <div className="w-8 h-8 border-4 border-ink-100 border-t-ink-700 rounded-full animate-spin" />
+          <span className="text-sm text-ink-500">Loading SmartSite…</span>
         </div>
       </div>
     );

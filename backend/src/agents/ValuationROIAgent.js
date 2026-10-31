@@ -23,9 +23,9 @@ Analyze the provided property details and return a JSON output with keys:
     const userPrompt = `Property Details:
 Name: ${property.title || property.name}
 Price: ₹${property.price}
-City/Area: ${property.location?.city || property.location || 'Bangalore'}
-BHK/Type: ${property.specifications?.bedrooms || 3} BHK
-Size: ${property.specifications?.sqft || 1450} sqft
+City/Area: ${[property.location?.address, property.location?.city].filter(Boolean).join(', ') || 'Unknown'}
+BHK/Type: ${property.specifications?.bedrooms ?? 'Unknown'} BHK
+Carpet Area: ${property.specifications?.carpetArea ? `${property.specifications.carpetArea} sqft` : 'Unknown'}
 Current Amenities: ${JSON.stringify(property.amenities || [])}
 
 Analyze the financial value and return valid JSON.`;

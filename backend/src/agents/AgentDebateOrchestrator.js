@@ -25,7 +25,7 @@ class AgentDebateOrchestrator {
           propertyId: prop._id || prop.id || prop.title,
           propertyName: prop.title || prop.name,
           price: prop.price,
-          city: prop.location?.city || prop.location || 'Bangalore',
+          city: prop.location?.city || 'Unknown',
           valuationAudit: valuation,
           geoAudit: geo,
           negotiationAudit: negotiation

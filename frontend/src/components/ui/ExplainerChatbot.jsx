@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Sparkles, Send, MapPin, Loader2, Bot, Compass } from 'lucide-react';
+import { Send, Loader2, MessageSquare } from 'lucide-react';
 import PropertyMapView from '../property/PropertyMapView';
 import { buyerAPI } from '../../services/api';
 
@@ -29,10 +29,10 @@ function detectCategory(question) {
   return CATEGORY_KEYWORDS.find(({ match }) => match.some((kw) => q.includes(kw))) || null;
 }
 
-export default function ExplainerChatbot({ property, color = '#6366f1', onPoiUpdate }) {
+export default function ExplainerChatbot({ property, color = '#a8432a', onPoiUpdate }) {
   const [messages, setMessages] = useState([
     {
-      text: `Hi! I'm your AI expert for **${property?.title || 'this property'}**. Ask me about nearby amenities (e.g., "Are there malls nearby?") or about its AI score (e.g., "Why is the score 84?", "Why is this suitable for a family?") — I'll answer from this property's real data.`,
+      text: `Hi! Ask me about ${property?.title || 'this property'}: nearby amenities (e.g., "Are there malls nearby?") or its score (e.g., "Why is the score 84?", "Why is this suitable for a family?") — I'll answer from this property's real data.`,
       sender: 'bot'
     }
   ]);
@@ -110,17 +110,20 @@ export default function ExplainerChatbot({ property, color = '#6366f1', onPoiUpd
       setMessages((prev) => [...prev, { text: data.data.reply, sender: 'bot' }]);
     } catch (err) {
       console.error('Explainer chat failed:', err);
-      setMessages((prev) => [...prev, { text: "Sorry, I couldn't fetch nearby data just now. Please try again.", sender: 'bot' }]);
+      const text = err.response?.status === 401
+        ? 'Please sign in to ask questions about this home.'
+        : "Sorry, I couldn't fetch nearby data just now. Please try again.";
+      setMessages((prev) => [...prev, { text, sender: 'bot' }]);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="glass-card mt-6 p-4 rounded-3xl flex flex-col gap-6 border border-slate-200">
+    <div className="glass-card mt-6 p-4 flex flex-col gap-4">
 
       {/* Dynamic Map Section — full width so every pinned POI is fully visible */}
-      <div className="w-full rounded-2xl overflow-hidden relative border border-slate-200">
+      <div className="w-full rounded-lg overflow-hidden relative border border-line">
         <PropertyMapView
           properties={[property]}
           customPois={pois}
@@ -130,14 +133,14 @@ export default function ExplainerChatbot({ property, color = '#6366f1', onPoiUpd
       </div>
 
       {/* Chat Section */}
-      <div className="w-full flex flex-col h-[380px] rounded-2xl overflow-hidden bg-slate-900 text-white shadow-xl">
+      <div className="w-full flex flex-col h-[380px] rounded-lg overflow-hidden bg-ink-900 text-white border border-ink-800">
 
         {/* Chat Header */}
-        <div className="h-14 border-b border-slate-800 flex items-center px-4 bg-slate-950/80">
-          <Bot size={20} className="text-indigo-400 mr-2" />
+        <div className="h-14 border-b border-ink-800 flex items-center px-4">
+          <MessageSquare size={18} className="text-ink-200 mr-2.5" />
           <div>
-            <h3 className="font-bold text-sm text-white">AI Property Expert</h3>
-            <p className="text-[10px] text-indigo-300">Real nearby amenities & AI score reasoning, for this property</p>
+            <h3 className="font-bold text-sm text-white">Ask about this home</h3>
+            <p className="text-xs text-ink-200">Nearby amenities and how the score was worked out</p>
           </div>
         </div>
 
@@ -151,11 +154,12 @@ export default function ExplainerChatbot({ property, color = '#6366f1', onPoiUpd
               className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               <div
-                className={`max-w-[90%] rounded-2xl p-3 text-xs leading-relaxed ${
+                className={`max-w-[90%] rounded-lg p-3 text-sm leading-relaxed ${
                   msg.sender === 'user'
-                  ? 'bg-indigo-600 text-white rounded-br-sm shadow-md font-medium'
-                  : 'bg-slate-800 text-slate-200 rounded-bl-sm border border-slate-700/60'
+                  ? 'text-white'
+                  : 'bg-ink-800 text-ink-100'
                 }`}
+                style={msg.sender === 'user' ? { backgroundColor: color } : undefined}
               >
                 {msg.text.split('\n').map((line, idx) => (
                   <React.Fragment key={idx}>
@@ -168,8 +172,8 @@ export default function ExplainerChatbot({ property, color = '#6366f1', onPoiUpd
           ))}
           {loading && (
              <div className="flex justify-start">
-               <div className="bg-slate-800 rounded-2xl rounded-bl-sm p-3 flex gap-1 items-center text-xs text-indigo-300">
-                 <Loader2 size={14} className="animate-spin text-indigo-400" /> Finding nearest real amenities...
+               <div className="bg-ink-800 rounded-lg p-3 flex gap-1.5 items-center text-sm text-ink-200">
+                 <Loader2 size={14} className="animate-spin" /> Finding the nearest amenities...
                </div>
              </div>
           )}
@@ -177,21 +181,23 @@ export default function ExplainerChatbot({ property, color = '#6366f1', onPoiUpd
         </div>
 
         {/* Input */}
-        <div className="p-3 bg-slate-950/90 border-t border-slate-800">
+        <div className="p-3 border-t border-ink-800">
           <form onSubmit={handleSend} className="relative flex items-center">
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="e.g. Are there malls or schools nearby?"
-              className="w-full bg-slate-900 border border-slate-700/80 rounded-full py-2.5 pl-4 pr-10 text-xs text-white placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 transition-colors"
+              className="w-full bg-ink-950 border border-ink-700 rounded-md py-2.5 pl-3 pr-11 text-sm text-white placeholder:text-ink-400 focus:outline-none focus:border-ink-300 transition-colors"
             />
             <button
               type="submit"
               disabled={!input.trim() || loading}
-              className="absolute right-2 w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-indigo-500 transition-colors shadow-md"
+              className="absolute right-1.5 w-8 h-8 rounded flex items-center justify-center text-white disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
+              style={{ backgroundColor: color }}
+              aria-label="Send"
             >
-              <Send size={12} />
+              <Send size={14} />
             </button>
           </form>
         </div>

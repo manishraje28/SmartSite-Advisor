@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Sliders, TrendingUp, CloudSun, ShieldCheck, CheckCircle2, ArrowRight } from 'lucide-react';
 import ScoreRing from '../ui/ScoreRing';
 
 export default function AILivePreview() {
@@ -11,8 +10,8 @@ export default function AILivePreview() {
 
   const properties = {
     sobha: {
-      name: "Sobha Dream Acres",
-      city: "Panathur, Bangalore",
+      name: "Sample: 2 BHK in Kharghar",
+      city: "Kharghar, Navi Mumbai",
       price: "₹95.0 Lakhs",
       baseRoi: 88,
       baseTransit: 82,
@@ -21,8 +20,8 @@ export default function AILivePreview() {
       verdict: "High yield rental option with 94/100 internal amenities rating."
     },
     brigade: {
-      name: "Brigade Gateway Enclave",
-      city: "Malleshwaram, Bangalore",
+      name: "Sample: 3 BHK in Powai",
+      city: "Powai, Mumbai",
       price: "₹1.80 Cr",
       baseRoi: 92,
       baseTransit: 96,
@@ -31,8 +30,8 @@ export default function AILivePreview() {
       verdict: "Top-tier transit connectivity with direct access to metro and world trade center."
     },
     prestige: {
-      name: "Prestige Lakeside Habitat",
-      city: "Varthur, Bangalore",
+      name: "Sample: 2 BHK on Ghodbunder Road",
+      city: "Ghodbunder Road, Thane",
       price: "₹1.20 Cr",
       baseRoi: 84,
       baseTransit: 78,
@@ -53,42 +52,37 @@ export default function AILivePreview() {
   );
 
   return (
-    <div className="bg-slate-900 text-white rounded-3xl p-6 sm:p-8 border border-slate-800 shadow-2xl relative overflow-hidden">
-      <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-800 flex-wrap gap-4">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-400">
-            <Sparkles size={16} />
-          </div>
-          <div>
-            <h4 className="text-sm font-bold text-white">Interactive AI Lifestyle Calculator</h4>
-            <p className="text-[11px] text-slate-400">Adjust parameters to see live score computation</p>
-          </div>
+    <div className="glass-card p-6 sm:p-8">
+      <div className="flex items-center justify-between mb-6 pb-4 border-b border-line flex-wrap gap-4">
+        <div>
+          <h4 className="text-base font-bold text-ink-900">Try the score weights</h4>
+          <p className="text-sm text-ink-500">Move the sliders to see how the score changes.</p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="inline-flex rounded-md border border-ink-200 overflow-hidden divide-x divide-ink-200">
           {Object.keys(properties).map((key) => (
             <button
               key={key}
               onClick={() => setSelectedProperty(key)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+              className={`px-3 py-1.5 text-xs font-semibold transition-colors ${
                 selectedProperty === key
-                  ? 'bg-indigo-600 text-white shadow-md'
-                  : 'bg-slate-800 text-slate-400 hover:text-white'
+                  ? 'bg-ink-900 text-white'
+                  : 'bg-white text-ink-700 hover:bg-ink-50'
               }`}
             >
-              {properties[key].name.split(' ')[0]}
+              {properties[key].city.split(',')[0]}
             </button>
           ))}
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-        {/* Sliders Control Column */}
+        {/* Sliders */}
         <div className="lg:col-span-6 space-y-5">
           <div>
-            <div className="flex justify-between text-xs font-bold mb-2">
-              <span className="text-indigo-400 flex items-center gap-1"><TrendingUp size={14} /> Investment ROI Weight</span>
-              <span className="text-slate-300">{roiWeight}%</span>
+            <div className="flex justify-between text-sm mb-2">
+              <span className="font-semibold text-ink-800">Investment ROI weight</span>
+              <span className="text-ink-700 tabular">{roiWeight}%</span>
             </div>
             <input
               type="range"
@@ -96,14 +90,14 @@ export default function AILivePreview() {
               max="80"
               value={roiWeight}
               onChange={(e) => setRoiWeight(Number(e.target.value))}
-              className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+              className="w-full cursor-pointer accent-ink-800"
             />
           </div>
 
           <div>
-            <div className="flex justify-between text-xs font-bold mb-2">
-              <span className="text-emerald-400 flex items-center gap-1"><CloudSun size={14} /> Commute & Transit Weight</span>
-              <span className="text-slate-300">{transitWeight}%</span>
+            <div className="flex justify-between text-sm mb-2">
+              <span className="font-semibold text-ink-800">Commute and transit weight</span>
+              <span className="text-ink-700 tabular">{transitWeight}%</span>
             </div>
             <input
               type="range"
@@ -111,14 +105,14 @@ export default function AILivePreview() {
               max="80"
               value={transitWeight}
               onChange={(e) => setTransitWeight(Number(e.target.value))}
-              className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+              className="w-full cursor-pointer accent-ink-800"
             />
           </div>
 
           <div>
-            <div className="flex justify-between text-xs font-bold mb-2">
-              <span className="text-purple-400 flex items-center gap-1"><ShieldCheck size={14} /> Amenities & Comfort Weight</span>
-              <span className="text-slate-300">{amenityWeight}%</span>
+            <div className="flex justify-between text-sm mb-2">
+              <span className="font-semibold text-ink-800">Amenities and comfort weight</span>
+              <span className="text-ink-700 tabular">{amenityWeight}%</span>
             </div>
             <input
               type="range"
@@ -126,31 +120,32 @@ export default function AILivePreview() {
               max="80"
               value={amenityWeight}
               onChange={(e) => setAmenityWeight(Number(e.target.value))}
-              className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-purple-500"
+              className="w-full cursor-pointer accent-ink-800"
             />
           </div>
         </div>
 
-        {/* Live Card Preview Column */}
+        {/* Preview card */}
         <div className="lg:col-span-6">
           <AnimatePresence mode="wait">
             <motion.div
               key={selectedProperty + score}
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-slate-950/80 rounded-2xl p-5 border border-slate-800 flex items-center gap-5 shadow-xl"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="rounded-lg p-4 border border-line flex items-center gap-4"
             >
               <img
                 src={currentProp.image}
                 alt={currentProp.name}
-                className="w-24 h-24 rounded-2xl object-cover flex-shrink-0"
+                className="w-24 h-24 rounded-lg object-cover flex-shrink-0"
               />
               <div className="flex-1 min-w-0">
-                <div className="text-xs font-extrabold text-indigo-400">{currentProp.price}</div>
-                <h5 className="font-bold text-white text-base truncate">{currentProp.name}</h5>
-                <p className="text-[11px] text-slate-400 truncate mb-2">{currentProp.city}</p>
-                <p className="text-[11px] text-slate-300 leading-tight line-clamp-2">{currentProp.verdict}</p>
+                <div className="text-lg font-bold text-brick-600 tabular">{currentProp.price}</div>
+                <h5 className="font-semibold text-ink-900 text-sm truncate">{currentProp.name}</h5>
+                <p className="text-xs text-ink-500 truncate mb-1.5">{currentProp.city}</p>
+                <p className="text-xs text-ink-700 leading-snug line-clamp-2">{currentProp.verdict}</p>
               </div>
               <div className="flex-shrink-0 text-center">
                 <ScoreRing score={score} size={64} label="Match" />

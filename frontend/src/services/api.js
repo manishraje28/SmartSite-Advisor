@@ -4,7 +4,7 @@ const RAW_API_BASE =
   import.meta.env.VITE_APP_API_BASE_URL ||
   import.meta.env.VITE_API_BASE_URL ||
   import.meta.env.VITE_API_URL ||
-  'http://localhost:3001/api';
+  'http://localhost:5000/api';
 
 const API_BASE = RAW_API_BASE.replace(/\/$/, '');
 
@@ -23,13 +23,24 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Response interceptor for error handling
+// A 401 from a login/register call just means wrong credentials. Anywhere else
+// it means the session token is expired, so end the session fully
+// (token AND user) and send the user to sign in again — clearing only the
+// token left the UI looking logged in while every request failed. A guest with
+// no token just gets the error; there's no session to expire.
+const AUTH_ENDPOINTS = ['/auth/login', '/auth/register', '/auth/google'];
+
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const isAuthCall = AUTH_ENDPOINTS.some((path) => error.config?.url?.startsWith(path));
+    const hadSession = !!localStorage.getItem('token');
+    if (error.response?.status === 401 && !isAuthCall && hadSession) {
       localStorage.removeItem('token');
-      // Don't redirect here — let AuthContext handle it
+      localStorage.removeItem('user');
+      if (window.location.pathname !== '/login') {
+        window.location.assign('/login?expired=1');
+      }
     }
     return Promise.reject(error);
   }
@@ -47,6 +58,7 @@ export const authAPI = {
 export const propertyAPI = {
   getAll: (params) => api.get('/properties', { params }),
   getById: (id) => api.get(`/properties/${id}`),
+  previewLocation: (params) => api.get('/properties/geocode-preview', { params }),
   create: (data) => api.post('/properties', data),
   update: (id, data) => api.patch(`/properties/${id}`, data),
   delete: (id) => api.delete(`/properties/${id}`),
