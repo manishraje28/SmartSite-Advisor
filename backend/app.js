@@ -46,7 +46,12 @@ app.use(helmet());
  * CLIENT_ORIGIN is a comma-separated list of allowed frontend origins. Without it,
  * any origin is allowed — fine on a dev machine, refused in production.
  */
-const allowedOrigins = (process.env.CLIENT_ORIGIN || '').split(',').map((o) => o.trim()).filter(Boolean);
+// Browsers send the origin without a trailing slash, so strip any pasted one
+// ("https://site.com/" would otherwise never match and CORS fails silently).
+const allowedOrigins = (process.env.CLIENT_ORIGIN || '')
+  .split(',')
+  .map((o) => o.trim().replace(/\/+$/, ''))
+  .filter(Boolean);
 if (!allowedOrigins.length && process.env.NODE_ENV === 'production') {
   throw new Error('CLIENT_ORIGIN must be set in production (e.g. https://smartsite.onrender.com).');
 }
