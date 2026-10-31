@@ -6,7 +6,8 @@ const RAW_API_BASE =
   import.meta.env.VITE_API_URL ||
   'http://localhost:5000/api';
 
-const API_BASE = RAW_API_BASE.replace(/\/$/, '');
+// Every backend route lives under /api; accept the base URL with or without it.
+const API_BASE = RAW_API_BASE.replace(/\/+$/, '').replace(/(?<!\/api)$/, '/api');
 
 const api = axios.create({
   baseURL: API_BASE,
