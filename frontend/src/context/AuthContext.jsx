@@ -3,6 +3,17 @@ import { authAPI } from '../services/api';
 
 const AuthContext = createContext();
 
+// Reads the `exp` claim from the JWT payload (no signature check — the server
+// still verifies every request; this only avoids restoring a dead session).
+const isTokenExpired = (token) => {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+    return !payload.exp || payload.exp * 1000 <= Date.now();
+  } catch {
+    return true;
+  }
+};
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(localStorage.getItem('token') || null);
@@ -14,7 +25,10 @@ export const AuthProvider = ({ children }) => {
     const restoreSession = async () => {
       const savedToken = localStorage.getItem('token');
       const savedUser = localStorage.getItem('user');
-      if (savedToken && savedUser) {
+      if (savedToken && isTokenExpired(savedToken)) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+      } else if (savedToken && savedUser) {
         try {
           setToken(savedToken);
           setUser(JSON.parse(savedUser));

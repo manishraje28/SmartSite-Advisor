@@ -1,19 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { buyerAPI, propertyAPI } from '../services/api';
 import ScoreRing from '../components/ui/ScoreRing';
 import ExplainerChatbot from '../components/ui/ExplainerChatbot';
 import {
-  GitCompare, Trophy, MapPin, Bed, Bath, Maximize,
-  Sparkles, CheckCircle2, AlertTriangle, TrendingUp, Zap, ChevronDown,
-  Clock, ShieldCheck, Heart, DollarSign, CloudSun, ThumbsUp, ThumbsDown,
-  Building, UserCheck, HelpCircle, ArrowRight, Compass, Navigation, Search
+  GitCompare, Trophy, MapPin, Check, CloudSun, ThumbsUp, ThumbsDown,
+  ArrowLeft, Search
 } from 'lucide-react';
-import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, ResponsiveContainer, Legend } from 'recharts';
 
-const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444'];
+const WARN = 'bg-[#fdf6e7] border-[#f3e2b8] text-[#8a5a0b]';
 
 export default function ComparisonDashboard() {
   const { user } = useAuth();
@@ -174,42 +170,93 @@ export default function ComparisonDashboard() {
     return entry.durationText ? `${entry.durationText} ${mode}` : entry.distanceText || 'Not available';
   };
 
-  // Helper to synthesize Plain-English Verdict for a property
-  const getPlainEnglishVerdict = (prop, index) => {
-    const score = prop.aiScore?.overall || 80;
-    const bedrooms = prop.specifications?.bedrooms || 2;
-    const price = prop.price || 5000000;
+  // Builds the badge, summary and pros/cons only from this property's real data
+  // (Google Places distances, AI sub-scores, AQI, amenities, price vs. the other
+  // compared properties) — so a claim like "close to a school" is only made when
+  // a school really is close.
+  const getPlainEnglishVerdict = (prop, allProps) => {
+    const s = prop.aiScore || {};
+    const pros = [];
+    const cons = [];
 
-    if (bedrooms >= 3) {
-      return {
-        badge: "👨‍👩‍👧 Best for Growing Families",
-        summary: "Spacious layout with multi-room setup. Great for family living with schools and parks within easy distance.",
-        pros: ["Large living space & extra balcony", "Close to primary schools & grocery stores", "24/7 security with gated entry"],
-        cons: ["Slightly higher monthly maintenance outflow"]
-      };
-    } else if (price < 8000000) {
-      return {
-        badge: "💰 High Value & Budget Friendly",
-        summary: "Maximum bang for your buck! Low monthly EMI outlay with high potential for price appreciation.",
-        pros: ["Affordable monthly EMI", "Ideal for first-time home buyers", "High rental demand from IT professionals"],
-        cons: ["Standard parking capacity"]
-      };
-    } else {
-      return {
-        badge: "💼 Perfect for IT & Working Professionals",
-        summary: "Prime location near metro & IT hubs. Minimal daily travel stress with excellent high-speed connectivity.",
-        pros: ["Less than 10 mins commute to office hubs", "Walking distance to metro & supermarkets", "High resale value & strong liquid asset"],
-        cons: ["Higher entry price per sqft"]
-      };
+    const nearestPlace = (key) => {
+      const entry = prop.realAmenities?.[key]?.top?.[0];
+      return entry && entry.distanceValue < 999999 ? entry : null;
+    };
+    const placeLabels = { transit: 'metro/transit stop', schools: 'school', hospitals: 'hospital', malls: 'mall' };
+    Object.entries(placeLabels).forEach(([key, label]) => {
+      const place = nearestPlace(key);
+      if (!place) return;
+      if (place.distanceValue <= 1000) pros.push(`Nearest ${label} (${place.name}) is only ${place.distanceText} away`);
+      else if (place.distanceValue >= 3000) cons.push(`Nearest ${label} is ${place.distanceText} away`);
+    });
+
+    const dimensions = [
+      { key: 'locationScore', label: 'Location' },
+      { key: 'connectivityScore', label: 'Connectivity' },
+      { key: 'amenitiesScore', label: 'Amenities' },
+      { key: 'roiPotential', label: 'Investment potential' },
+    ].filter((d) => s[d.key] != null);
+    dimensions.forEach(({ key, label }) => {
+      if (s[key] >= 80) pros.push(`${label} scores high (${s[key]}/100)`);
+      else if (s[key] < 60) cons.push(`${label} scores low (${s[key]}/100)`);
+    });
+
+    const env = prop.environmentScore;
+    if (env?.overall != null) {
+      const aqiText = env.aqi != null ? ` (AQI ${env.aqi}${env.aqiLabel ? `, ${env.aqiLabel}` : ''})` : '';
+      if (env.overall >= 75) pros.push(`Good air quality${aqiText}`);
+      else if (env.overall < 50) cons.push(`Poor air quality${aqiText}`);
     }
+
+    const amenities = prop.amenities || [];
+    const highlights = ['Swimming Pool', 'Gym', 'Clubhouse', 'Garden'].filter((a) => amenities.includes(a));
+    if (highlights.length) pros.push(`Has ${highlights.join(', ')}`);
+    const missing = ['Parking', 'Security', 'Lift'].filter((a) => !amenities.includes(a));
+    if (missing.length) cons.push(`No ${missing.join(', ')} listed`);
+
+    if (prop.priceFairness?.label === 'below') pros.push(prop.priceFairness.message);
+    if (prop.priceFairness?.label === 'above') cons.push(prop.priceFairness.message);
+
+    const priced = allProps.filter((p) => p.price);
+    const isCheapest = priced.length > 1 && prop.price === Math.min(...priced.map((p) => p.price));
+    const school = nearestPlace('schools');
+    const transit = nearestPlace('transit');
+
+    let badge = 'Balanced option';
+    if ((prop.specifications?.bedrooms || 0) >= 3 && school && school.distanceValue <= 2000) badge = 'Good for families';
+    else if ((transit && transit.distanceValue <= 1000) || s.connectivityScore >= 85) badge = 'Great for commuters';
+    else if (s.roiPotential >= 80) badge = 'Strong investment potential';
+    else if (isCheapest) badge = 'Most affordable of these';
+
+    let summary;
+    if (s.overall == null || dimensions.length === 0) {
+      summary = "This property hasn't been scored yet, so this summary is based only on its location data.";
+    } else {
+      const sorted = [...dimensions].sort((a, b) => s[b.key] - s[a.key]);
+      const best = sorted[0];
+      const worst = sorted[sorted.length - 1];
+      summary = prop.matchIsPersonal && prop.matchPercentage != null && prop.matchPercentage !== s.overall
+        ? `Matches your priorities at ${prop.matchPercentage}/100; its general score for all buyers is ${s.overall}/100. Its strongest area is`
+        : `Overall score ${s.overall}/100. Its strongest area is`;
+      summary += ` ${best.label.toLowerCase()} (${s[best.key]}/100)`;
+      summary += s[worst.key] < 60 ? `, while ${worst.label.toLowerCase()} is its weak spot (${s[worst.key]}/100).` : ', with no weak areas below 60.';
+    }
+
+    return {
+      badge,
+      summary,
+      pros: pros.length ? pros.slice(0, 4) : ['No standout strengths found in the available data'],
+      cons: cons.length ? cons.slice(0, 3) : ['No major drawbacks found in the available data'],
+    };
   };
 
   if (loading) {
     return (
       <div className="container-app py-12">
         <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4">
-          <div className="w-12 h-12 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
-          <span className="text-sm font-semibold text-slate-600">Generating Plain-English Comparison Analysis...</span>
+          <div className="w-8 h-8 border-4 border-ink-100 border-t-ink-700 rounded-full animate-spin" />
+          <span className="text-sm font-semibold text-ink-600">Preparing your plain-English comparison...</span>
         </div>
       </div>
     );
@@ -218,80 +265,72 @@ export default function ComparisonDashboard() {
   // ── SELECTION MODE ──
   if (comparedProperties.length === 0) {
     return (
-      <div className="container-app pt-24 pb-12">
-        <div className="max-w-3xl mx-auto text-center mb-8">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-bold mb-4">
-            <Sparkles size={14} className="text-indigo-600" /> Plain-English Property Comparison
-          </div>
-          <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight">
-            Compare Properties in <span className="text-indigo-600">Simple Everyday Terms</span>
-          </h1>
-          <p className="text-slate-600 text-sm mt-2">
-            Select 2 to 4 properties below to compare prices, monthly EMIs, daily commute times, air quality, and plain-English pros & cons.
+      <div className="container-app pt-8 pb-24">
+        <div className="max-w-3xl mb-6">
+          <h1 className="text-3xl font-bold text-ink-900 tracking-tight">Compare properties</h1>
+          <p className="text-ink-500 text-sm mt-1">
+            Select 2 to 4 properties to compare prices, monthly EMIs, daily commute times, air quality, and plain-English pros and cons.
           </p>
         </div>
 
-        <div className="max-w-xl mx-auto mb-8 relative">
-          <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+        <div className="max-w-xl mb-8 relative">
+          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-400" />
           <input
             type="text"
             placeholder="Search all properties by title, city, or locality..."
             value={pickerSearch}
             onChange={(e) => setPickerSearch(e.target.value)}
-            className="w-full bg-white border border-slate-200 py-3 pl-11 pr-11 rounded-2xl text-slate-900 focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 transition-all font-medium placeholder:text-slate-400 shadow-sm"
+            className="input-field !pl-10 !pr-10"
           />
           {searchLoading && (
-            <div className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
+            <div className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-ink-100 border-t-ink-700 rounded-full animate-spin" />
           )}
         </div>
 
         {isSearching && searchLoading && searchResults === null ? (
           <div className="flex justify-center py-16">
-            <div className="w-8 h-8 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
+            <div className="w-8 h-8 border-4 border-ink-100 border-t-ink-700 rounded-full animate-spin" />
           </div>
         ) : filteredPickerProperties.length === 0 ? (
-          <div className="bg-white/50 backdrop-blur-xl border border-dashed border-slate-200 rounded-3xl p-16 text-center max-w-2xl mx-auto shadow-soft mb-8">
-            <Search size={32} className="text-slate-300 mx-auto mb-4" />
-            <h3 className="text-lg font-bold text-slate-900 mb-2">No properties match "{pickerSearch}"</h3>
-            <p className="text-slate-500 text-sm mb-6">Try a different search term, or clear it to browse everything loaded so far.</p>
-            <button
-              onClick={() => setPickerSearch('')}
-              className="px-5 py-2.5 bg-indigo-600 text-white font-medium rounded-full hover:bg-indigo-500 transition-colors text-sm"
-            >
-              Clear Search
+          <div className="bg-white border border-dashed border-line rounded-lg p-12 text-center max-w-2xl mb-8">
+            <Search size={28} className="text-ink-300 mx-auto mb-3" />
+            <h3 className="text-lg font-bold text-ink-900 mb-1">No properties match "{pickerSearch}"</h3>
+            <p className="text-ink-500 text-sm mb-5">Try a different search term, or clear it to browse everything loaded so far.</p>
+            <button onClick={() => setPickerSearch('')} className="btn-secondary text-sm">
+              Clear search
             </button>
           </div>
         ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          {filteredPickerProperties.map((prop, i) => {
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+          {filteredPickerProperties.map((prop) => {
             const isSelected = selectedIds.includes(prop._id);
             return (
               <div
                 key={prop._id}
                 onClick={() => toggleId(prop._id)}
-                className={`bg-white rounded-3xl p-5 border-2 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md relative overflow-hidden ${
+                className={`bg-white rounded-lg p-4 border cursor-pointer transition-colors ${
                   isSelected
-                    ? 'border-indigo-600 bg-indigo-50/30 ring-2 ring-indigo-500/20'
-                    : 'border-slate-200 hover:border-slate-300'
+                    ? 'border-ink-900 ring-1 ring-ink-900'
+                    : 'border-line hover:border-ink-300'
                 }`}
               >
                 <div className="flex items-center gap-4">
                   <img
                     src={prop.images?.[0] || 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80'}
                     alt={prop.title}
-                    className="w-20 h-20 rounded-2xl object-cover flex-shrink-0"
+                    className="w-20 h-20 rounded-md object-cover flex-shrink-0"
                   />
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-slate-900 text-base truncate">{prop.title}</h3>
-                    <div className="text-indigo-600 font-extrabold text-sm mt-0.5">{formatPrice(prop.price)}</div>
-                    <div className="text-xs text-slate-500 flex items-center gap-1 mt-1">
-                      <MapPin size={12} className="text-slate-400" /> {prop.location?.city || 'Bangalore'}
+                    <h3 className="font-semibold text-ink-900 text-sm truncate">{prop.title}</h3>
+                    <div className="text-brick-600 font-bold text-base mt-0.5 tabular">{formatPrice(prop.price)}</div>
+                    <div className="text-xs text-ink-500 flex items-center gap-1 mt-1">
+                      <MapPin size={12} className="text-ink-400" /> {prop.location?.city}
                     </div>
                   </div>
-                  <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-colors flex-shrink-0 ${
-                    isSelected ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-slate-300 text-transparent'
+                  <div className={`w-7 h-7 rounded-full border flex items-center justify-center transition-colors flex-shrink-0 ${
+                    isSelected ? 'bg-ink-900 border-ink-900 text-white' : 'border-ink-200 text-transparent'
                   }`}>
-                    <CheckCircle2 size={18} />
+                    <Check size={14} strokeWidth={3} />
                   </div>
                 </div>
               </div>
@@ -305,21 +344,21 @@ export default function ComparisonDashboard() {
             <button
               onClick={handleLoadMorePicker}
               disabled={loadingMorePicker}
-              className="px-8 py-3.5 bg-white border border-slate-200 text-slate-700 font-semibold rounded-full shadow-sm hover:shadow-md hover:border-indigo-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn-secondary text-sm"
             >
-              {loadingMorePicker ? 'Loading...' : `Load More (${pickerTotal - allProperties.length} remaining)`}
+              {loadingMorePicker ? 'Loading...' : `Load more (${pickerTotal - allProperties.length} remaining)`}
             </button>
           </div>
         )}
 
         {selectedIds.length >= 2 && (
-          <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50">
-            <button 
-              onClick={handleCompare} 
-              className="btn-primary !px-8 !py-4 flex items-center gap-3 shadow-xl shadow-indigo-500/30 text-base font-bold rounded-full"
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+            <button
+              onClick={handleCompare}
+              className="btn-primary !px-6 !py-3 gap-2 shadow-lg text-sm"
             >
-              <GitCompare size={20} />
-              Compare {selectedIds.length} Properties in Plain English
+              <GitCompare size={18} />
+              Compare {selectedIds.length} properties
             </button>
           </div>
         )}
@@ -327,171 +366,151 @@ export default function ComparisonDashboard() {
     );
   }
 
+  const tabClass = (tab) =>
+    `px-3.5 py-1.5 rounded text-sm font-semibold transition-colors ${
+      activeTab === tab ? 'bg-ink-900 text-white' : 'text-ink-600 hover:text-ink-900'
+    }`;
+
   // ── COMPARISON VIEW ──
   return (
-    <div className="container-app py-6 pb-16">
+    <div className="container-app pt-8 pb-16">
       {/* Header */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-8">
+      <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-4 mb-6">
         <div>
           <button
             onClick={() => { setComparedProperties([]); setSelectedIds([]); }}
-            className="text-xs font-bold text-slate-500 hover:text-indigo-600 flex items-center gap-1 mb-2 transition-colors"
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-ink-600 hover:text-ink-900 mb-3 transition-colors"
           >
-            ← Change Selected Properties ({comparedProperties.length} Selected)
+            <ArrowLeft size={16} /> Change selection ({comparedProperties.length} selected)
           </button>
-          <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
-            <GitCompare size={28} className="text-indigo-600" /> Plain-English Property Decision Guide
-          </h1>
-          <p className="text-slate-600 text-sm mt-1">
-            Easy-to-understand breakdown of costs, commuting, lifestyle match, and pros & cons.
+          <h1 className="text-2xl md:text-3xl font-bold text-ink-900 tracking-tight">Compare properties</h1>
+          <p className="text-ink-500 text-sm mt-1">
+            Costs, commuting, lifestyle match, and pros and cons, side by side.
           </p>
         </div>
 
         {/* Tab View Selector */}
-        <div className="flex items-center gap-1 bg-slate-200/80 p-1.5 rounded-2xl border border-slate-300">
-          <button
-            onClick={() => setActiveTab('summary')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              activeTab === 'summary' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            Plain Verdict & Pros
+        <div className="flex items-center gap-0.5 bg-white p-1 rounded-md border border-line">
+          <button onClick={() => setActiveTab('summary')} className={tabClass('summary')}>
+            Verdict and pros
           </button>
-          <button
-            onClick={() => setActiveTab('financial')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              activeTab === 'financial' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            Monthly EMI & Costs
+          <button onClick={() => setActiveTab('financial')} className={tabClass('financial')}>
+            Monthly EMI and costs
           </button>
-          <button
-            onClick={() => setActiveTab('convenience')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              activeTab === 'convenience' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            Commute & Air AQI
+          <button onClick={() => setActiveTab('convenience')} className={tabClass('convenience')}>
+            Commute and air quality
           </button>
         </div>
       </div>
 
-      {/* ── AI Executive Winner Banner ── */}
+      {/* ── Winner ── */}
       {winner && (
-        <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-3xl p-6 md:p-8 mb-10 shadow-2xl border border-indigo-500/30">
-          <div className="flex items-start gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-amber-400 flex-shrink-0">
-              <Trophy size={24} />
-            </div>
-            <div>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold mb-2">
-                <Sparkles size={12} /> Top Recommended Option for You
-              </div>
-              <h2 className="text-xl md:text-2xl font-extrabold text-white">
-                Our Winner: <span className="text-indigo-300">{winner.title}</span>
-              </h2>
-              <p className="text-slate-300 text-xs md:text-sm mt-2 leading-relaxed max-w-3xl">
-                {winner.explanation?.[0] || 'This property gives you the highest overall balance of location convenience, affordability, and healthy green surroundings.'}
-              </p>
-            </div>
+        <div className="glass-panel p-6 mb-8">
+          <div className="text-sm text-ink-200 flex items-center gap-1.5 mb-1">
+            <Trophy size={15} /> Top recommendation for you
           </div>
+          <h2 className="text-xl font-bold text-white">{winner.title}</h2>
+          <p className="text-ink-200 text-sm mt-2 leading-relaxed max-w-3xl">
+            {winner.explanation?.[0] || 'This property gives you the highest overall balance of location convenience, affordability, and healthy green surroundings.'}
+          </p>
         </div>
       )}
 
       {/* ── SIDE BY SIDE PROPERTY CARDS ── */}
       <div className={`grid gap-6 ${comparedProperties.length === 2 ? 'md:grid-cols-2' : 'md:grid-cols-3'}`}>
-        {comparedProperties.map((prop, i) => {
-          const verdict = getPlainEnglishVerdict(prop, i);
+        {comparedProperties.map((prop) => {
+          const verdict = getPlainEnglishVerdict(prop, comparedProperties);
           const emi = calculateEMI(prop.price);
           const isWinner = winner?.id === prop._id;
 
           return (
-            <div 
+            <div
               key={prop._id}
-              className={`bg-white rounded-3xl overflow-hidden border-2 shadow-lg transition-all flex flex-col ${
-                isWinner ? 'border-emerald-500 ring-2 ring-emerald-500/20' : 'border-slate-200/90'
+              className={`bg-white rounded-lg overflow-hidden border flex flex-col ${
+                isWinner ? 'border-moss-600 ring-1 ring-moss-600' : 'border-line'
               }`}
             >
               {/* Card Image Header */}
-              <div className="relative h-48 bg-slate-900">
+              <div className="relative h-48 bg-ink-900">
                 <img
                   src={prop.images?.[0] || 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80'}
                   alt={prop.title}
                   className="w-full h-full object-cover"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent" />
-                
+                <div className="absolute inset-0 bg-gradient-to-t from-ink-950/85 via-ink-950/20 to-transparent" />
+
                 {isWinner && (
-                  <div className="absolute top-3 left-3 bg-emerald-600 text-white text-[11px] font-extrabold px-3 py-1 rounded-full flex items-center gap-1 shadow-md">
-                    <Trophy size={12} /> #1 Recommendation
+                  <div className="absolute top-3 left-3 bg-moss-600 text-white text-xs font-semibold px-2 py-0.5 rounded flex items-center gap-1">
+                    <Trophy size={12} /> Top recommendation
                   </div>
                 )}
 
-                <div className="absolute bottom-3 left-4 right-4 flex justify-between items-end text-white">
-                  <div>
-                    <h3 className="font-extrabold text-lg drop-shadow">{prop.title}</h3>
-                    <p className="text-xs text-slate-300 flex items-center gap-1 font-medium">
-                      <MapPin size={12} className="text-indigo-400" /> {prop.location?.city || 'Bangalore'}
+                <div className="absolute bottom-3 left-4 right-4 flex justify-between items-end gap-3 text-white">
+                  <div className="min-w-0">
+                    <h3 className="font-bold text-lg leading-snug">{prop.title}</h3>
+                    <p className="text-xs text-ink-100 flex items-center gap-1">
+                      <MapPin size={12} /> {prop.location?.city}
                     </p>
                   </div>
                   {(prop.matchPercentage ?? prop.aiScore?.overall) != null ? (
-                    <ScoreRing score={prop.matchPercentage ?? prop.aiScore.overall} size={54} label="Score" />
+                    <div className="flex flex-col items-center gap-0.5 flex-shrink-0 bg-white rounded-lg px-2 pt-1.5 pb-1">
+                      <ScoreRing score={prop.matchPercentage ?? prop.aiScore.overall} size={48} />
+                      <span className="text-[11px] font-semibold text-ink-700">
+                        {prop.matchIsPersonal ? 'Your match' : 'Score'}
+                      </span>
+                    </div>
                   ) : (
-                    <div className="w-[54px] h-[54px] rounded-full border-2 border-dashed border-white/40 flex items-center justify-center text-center px-1">
-                      <span className="text-[8px] font-semibold text-white/60 leading-tight">Not scored</span>
+                    <div className="w-[54px] h-[54px] flex-shrink-0 rounded-full border-2 border-dashed border-white/40 flex items-center justify-center text-center px-1">
+                      <span className="text-[9px] font-semibold text-white/70 leading-tight">Not scored</span>
                     </div>
                   )}
                 </div>
               </div>
 
               {/* Body Content depending on activeTab */}
-              <div className="p-6 space-y-6 flex-grow flex flex-col justify-between">
+              <div className="p-5 space-y-5 flex-grow flex flex-col justify-between">
                 {/* ── TAB 1: SUMMARY & VERDICT ── */}
                 {activeTab === 'summary' && (
-                  <div className="space-y-5">
-                    {/* Badge */}
-                    <div className="p-3 rounded-2xl bg-indigo-50 border border-indigo-200/80 text-indigo-900 text-xs font-bold">
-                      {verdict.badge}
-                    </div>
+                  <div className="space-y-4">
+                    <span className="badge-ai">{verdict.badge}</span>
 
-                    {/* Simple Explanation */}
                     <div>
-                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">In Simple Terms</h4>
-                      <p className="text-xs text-slate-600 leading-relaxed font-medium">{verdict.summary}</p>
+                      <h4 className="text-sm font-bold text-ink-900 mb-1">In simple terms</h4>
+                      <p className="text-sm text-ink-700 leading-relaxed">{verdict.summary}</p>
                     </div>
 
                     {/* Price & EMI summary */}
-                    <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-between">
+                    <div className="py-3 border-y border-line flex items-center justify-between">
                       <div>
-                        <div className="text-[10px] text-slate-400 font-bold uppercase">Asking Price</div>
-                        <div className="text-lg font-extrabold text-indigo-600">{formatPrice(prop.price)}</div>
+                        <div className="text-xs text-ink-500">Asking price</div>
+                        <div className="text-lg font-bold text-brick-600 tabular">{formatPrice(prop.price)}</div>
                       </div>
                       <div className="text-right">
-                        <div className="text-[10px] text-slate-400 font-bold uppercase">Estimated EMI</div>
-                        <div className="text-sm font-extrabold text-slate-800">₹{emi.toLocaleString('en-IN')}/mo</div>
+                        <div className="text-xs text-ink-500">Estimated EMI</div>
+                        <div className="text-sm font-bold text-ink-900 tabular">₹{emi.toLocaleString('en-IN')}/mo</div>
                       </div>
                     </div>
 
                     {/* Pros & Cons */}
-                    <div className="space-y-3 pt-2">
-                      <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200/80 space-y-1.5">
-                        <div className="text-xs font-extrabold text-emerald-800 flex items-center gap-1.5">
-                          <ThumbsUp size={14} className="text-emerald-600" /> What's Great About This:
+                    <div className="space-y-3">
+                      <div className="p-3.5 rounded-lg bg-moss-50 border border-moss-100 space-y-1.5">
+                        <div className="text-sm font-bold text-moss-700 flex items-center gap-1.5">
+                          <ThumbsUp size={14} /> What's good about it
                         </div>
                         {verdict.pros.map((p, idx) => (
-                          <div key={idx} className="text-xs text-emerald-900 flex items-start gap-1.5 font-medium">
-                            <span className="text-emerald-600 mt-0.5">•</span> <span>{p}</span>
+                          <div key={idx} className="text-xs text-moss-900 flex items-start gap-1.5">
+                            <span className="text-moss-600">•</span> <span>{p}</span>
                           </div>
                         ))}
                       </div>
 
-                      <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200/80 space-y-1.5">
-                        <div className="text-xs font-extrabold text-amber-800 flex items-center gap-1.5">
-                          <ThumbsDown size={14} className="text-amber-600" /> Good to Know / Minor Caveats:
+                      <div className={`p-3.5 rounded-lg border space-y-1.5 ${WARN}`}>
+                        <div className="text-sm font-bold flex items-center gap-1.5">
+                          <ThumbsDown size={14} /> Good to know
                         </div>
                         {verdict.cons.map((c, idx) => (
-                          <div key={idx} className="text-xs text-amber-900 flex items-start gap-1.5 font-medium">
-                            <span className="text-amber-600 mt-0.5">•</span> <span>{c}</span>
+                          <div key={idx} className="text-xs text-ink-800 flex items-start gap-1.5">
+                            <span className="text-[#8a5a0b]">•</span> <span>{c}</span>
                           </div>
                         ))}
                       </div>
@@ -502,40 +521,51 @@ export default function ComparisonDashboard() {
                 {/* ── TAB 2: FINANCIAL BREAKDOWN ── */}
                 {activeTab === 'financial' && (
                   <div className="space-y-4">
-                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Financial Outflow Estimator</h4>
-                    
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center text-xs p-3 rounded-xl bg-slate-50 border border-slate-100">
-                        <span className="text-slate-600 font-medium">Total Property Cost</span>
-                        <span className="font-extrabold text-slate-900">{formatPrice(prop.price)}</span>
-                      </div>
-                      <div className="flex justify-between items-center text-xs p-3 rounded-xl bg-slate-50 border border-slate-100">
-                        <span className="text-slate-600 font-medium">Monthly Bank EMI (8.5%)</span>
-                        <span className="font-extrabold text-indigo-600">₹{emi.toLocaleString('en-IN')} / mo</span>
-                      </div>
-                      <div className="flex justify-between items-center text-xs p-3 rounded-xl bg-slate-50 border border-slate-100">
-                        <span className="text-slate-600 font-medium">Est. Monthly Maintenance</span>
-                        <span className="font-extrabold text-slate-800">₹{(prop.specifications?.carpetArea ? prop.specifications.carpetArea * 3.5 : 3500).toLocaleString()} / mo</span>
-                      </div>
-                      <div className="flex justify-between items-center text-xs p-3 rounded-xl bg-emerald-50 border border-emerald-200">
-                        <span className="text-emerald-900 font-bold">Potential Monthly Rent Income</span>
-                        <span className="font-extrabold text-emerald-700">₹{Math.round((prop.price || 5000000) * 0.0035).toLocaleString()} / mo</span>
-                      </div>
-                    </div>
+                    <h4 className="text-sm font-bold text-ink-900">Monthly cost estimate</h4>
 
-                    <div className="p-4 rounded-2xl bg-indigo-50 border border-indigo-100">
-                      <div className="text-xs font-bold text-indigo-900 mb-1">Expected 5-Year Property Value</div>
+                    {prop.priceFairness && (
+                      <div className={`p-3 rounded-lg border text-xs ${
+                        prop.priceFairness.label === 'above' ? WARN
+                          : prop.priceFairness.label === 'below' ? 'bg-moss-50 border-moss-100 text-moss-800'
+                          : 'bg-ink-50 border-line text-ink-700'
+                      }`}>
+                        <div className="font-bold mb-0.5">Price vs. nearby listings</div>
+                        <div>{prop.priceFairness.message}</div>
+                      </div>
+                    )}
+
+                    <dl className="divide-y divide-line border-y border-line text-sm">
+                      <div className="flex justify-between items-center py-2.5">
+                        <dt className="text-ink-600">Total property cost</dt>
+                        <dd className="font-bold text-ink-900 tabular">{formatPrice(prop.price)}</dd>
+                      </div>
+                      <div className="flex justify-between items-center py-2.5">
+                        <dt className="text-ink-600">Monthly bank EMI (8.5%)</dt>
+                        <dd className="font-bold text-ink-900 tabular">₹{emi.toLocaleString('en-IN')} / mo</dd>
+                      </div>
+                      <div className="flex justify-between items-center py-2.5">
+                        <dt className="text-ink-600">Est. monthly maintenance</dt>
+                        <dd className="font-bold text-ink-900 tabular">₹{(prop.specifications?.carpetArea ? prop.specifications.carpetArea * 3.5 : 3500).toLocaleString()} / mo</dd>
+                      </div>
+                      <div className="flex justify-between items-center py-2.5">
+                        <dt className="text-ink-600">Potential monthly rent income</dt>
+                        <dd className="font-bold text-moss-700 tabular">₹{Math.round((prop.price || 5000000) * 0.0035).toLocaleString()} / mo</dd>
+                      </div>
+                    </dl>
+
+                    <div className="p-4 rounded-lg bg-ink-50 border border-line">
+                      <div className="text-xs text-ink-500 mb-0.5">Expected value in 5 years</div>
                       {(() => {
                         const rate = getAppreciationRate(prop);
                         const price = prop.price || 5000000;
                         const projected = rate != null ? price * Math.pow(1 + rate / 100, 5) : price * 1.42;
                         return (
                           <>
-                            <div className="text-xl font-extrabold text-indigo-700">{formatPrice(projected)}</div>
-                            <p className="text-[11px] text-indigo-600 mt-1">
+                            <div className="text-xl font-bold text-ink-900 tabular">{formatPrice(projected)}</div>
+                            <p className="text-xs text-ink-500 mt-1">
                               {rate != null
-                                ? `Based on this property's AI ROI score (+${rate.toFixed(1)}% / yr)`
-                                : 'Property not yet AI-scored — showing a generic market estimate'}
+                                ? `Based on this property's ROI score (+${rate.toFixed(1)}% / yr)`
+                                : 'Property not yet scored — showing a generic market estimate'}
                             </p>
                           </>
                         );
@@ -547,55 +577,49 @@ export default function ComparisonDashboard() {
                 {/* ── TAB 3: COMMUTE & CONVENIENCE ── */}
                 {activeTab === 'convenience' && (
                   <div className="space-y-4">
-                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Everyday Distances (Nearest Real Location)</h4>
+                    <h4 className="text-sm font-bold text-ink-900">Everyday distances (nearest real place)</h4>
 
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
-                        <div className="text-[10px] text-slate-400 font-bold uppercase">Metro / Transit</div>
-                        <div className="text-sm font-extrabold text-indigo-600 mt-0.5">{formatNearest(prop.realAmenities?.transit?.top?.[0])}</div>
-                      </div>
-                      <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
-                        <div className="text-[10px] text-slate-400 font-bold uppercase">Mall</div>
-                        <div className="text-sm font-extrabold text-indigo-600 mt-0.5">{formatNearest(prop.realAmenities?.malls?.top?.[0])}</div>
-                      </div>
-                      <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
-                        <div className="text-[10px] text-slate-400 font-bold uppercase">School</div>
-                        <div className="text-sm font-extrabold text-emerald-600 mt-0.5">{formatNearest(prop.realAmenities?.schools?.top?.[0])}</div>
-                      </div>
-                      <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
-                        <div className="text-[10px] text-slate-400 font-bold uppercase">Hospital</div>
-                        <div className="text-sm font-extrabold text-emerald-600 mt-0.5">{formatNearest(prop.realAmenities?.hospitals?.top?.[0])}</div>
-                      </div>
-                    </div>
+                    <dl className="divide-y divide-line border-y border-line text-sm">
+                      {[
+                        ['Metro / transit', prop.realAmenities?.transit?.top?.[0]],
+                        ['Mall', prop.realAmenities?.malls?.top?.[0]],
+                        ['School', prop.realAmenities?.schools?.top?.[0]],
+                        ['Hospital', prop.realAmenities?.hospitals?.top?.[0]],
+                      ].map(([label, entry]) => (
+                        <div key={label} className="flex justify-between items-center py-2.5">
+                          <dt className="text-ink-600">{label}</dt>
+                          <dd className="font-semibold text-ink-900 tabular">{formatNearest(entry)}</dd>
+                        </div>
+                      ))}
+                    </dl>
 
-                    <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 space-y-1">
-                      <div className="text-xs font-bold text-emerald-900 flex items-center gap-1.5">
-                        <CloudSun size={16} className="text-emerald-600" /> Air Quality & Environment
+                    <div className="p-4 rounded-lg border border-line space-y-1">
+                      <div className="text-sm font-bold text-ink-900 flex items-center gap-1.5">
+                        <CloudSun size={16} className="text-ink-400" /> Air quality and environment
                       </div>
-                      <div className="text-sm font-extrabold text-emerald-800">
+                      <div className="text-sm font-semibold text-ink-800 tabular">
                         {prop.environmentScore?.aqi != null
                           ? `AQI ${prop.environmentScore.aqi} (${prop.environmentScore.aqiLabel || 'Unknown'})`
                           : 'Not yet scored'}
                       </div>
-                      <p className="text-[11px] text-emerald-700">{prop.environmentScore?.summary || 'Environmental summary not yet available for this property.'}</p>
+                      <p className="text-xs text-ink-500">{prop.environmentScore?.summary || 'Environmental summary not yet available for this property.'}</p>
                     </div>
                   </div>
                 )}
 
                 {/* View Details Link */}
-                <div className="pt-4 border-t border-slate-100">
-                  <Link 
-                    to={`/property/${prop._id}`} 
-                    className="btn-primary w-full !py-2.5 text-xs flex items-center justify-center gap-2 no-underline"
+                <div className="pt-4 border-t border-line">
+                  <Link
+                    to={`/property/${prop._id}`}
+                    className="btn-secondary w-full !py-2.5 text-sm no-underline"
                   >
-                    <span>View Full Property Dossier</span>
-                    <ArrowRight size={14} />
+                    View full property details
                   </Link>
                 </div>
               </div>
 
-              {/* Explainer AI Bot Component */}
-              <ExplainerChatbot property={prop} color={COLORS[i]} />
+              {/* Ask about this home */}
+              <ExplainerChatbot property={prop} color="#a8432a" />
             </div>
           );
         })}

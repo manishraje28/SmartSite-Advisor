@@ -1,14 +1,19 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mic, Send, Sparkles, Bot, X, CheckCircle2, RefreshCw } from 'lucide-react';
+import { Mic, Send, MessageCircle, X, RefreshCw } from 'lucide-react';
 import { agentAPI } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 
 export default function ParichayVoiceAssistant() {
+  const { isAuthenticated } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [result, setResult] = useState(null);
+
+  // The assistant runs on the LLM agent routes, which require sign-in.
+  if (!isAuthenticated) return null;
 
   // Web Speech API Voice Recognition (if supported in browser)
   const handleVoiceInput = () => {
@@ -54,42 +59,37 @@ export default function ParichayVoiceAssistant() {
 
   return (
     <>
-      {/* Floating Agent Launch Button */}
+      {/* Floating launch button */}
       <div className="fixed bottom-6 right-6 z-50">
-        <motion.button
-          whileHover={{ scale: 1.08 }}
-          whileTap={{ scale: 0.92 }}
+        <button
           onClick={() => setIsOpen(!isOpen)}
-          className="relative p-4 rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-2xl shadow-indigo-600/40 flex items-center justify-center border border-indigo-400/40"
+          aria-label="Ask SmartSite"
+          className="w-14 h-14 rounded-full bg-ink-900 text-white hover:bg-ink-800 shadow-lg flex items-center justify-center transition-colors"
         >
-          <Bot size={24} />
-          <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-emerald-400 rounded-full border-2 border-slate-900 animate-pulse" />
-        </motion.button>
+          <MessageCircle size={22} />
+        </button>
       </div>
 
-      {/* Agent Drawer Modal */}
+      {/* Drawer */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: 30, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 30, scale: 0.95 }}
-            className="fixed bottom-24 right-6 z-50 w-80 sm:w-96 bg-slate-900 text-white rounded-3xl p-6 border border-slate-800 shadow-2xl"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 8 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className="fixed bottom-24 right-6 z-50 w-80 sm:w-96 bg-ink-900 text-white rounded-lg p-5 border border-ink-800 shadow-lg"
           >
             {/* Header */}
-            <div className="flex items-center justify-between pb-4 border-b border-slate-800 mb-4">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
-                  <Sparkles size={16} />
-                </div>
-                <div>
-                  <h4 className="text-sm font-bold text-white">Parichay AI Voice Concierge</h4>
-                  <p className="text-[10px] text-emerald-400 font-bold">Autonomous Preference Assistant</p>
-                </div>
+            <div className="flex items-start justify-between pb-3 border-b border-ink-800 mb-4">
+              <div>
+                <h4 className="text-sm font-bold text-white">Ask SmartSite</h4>
+                <p className="text-xs text-ink-200">Describe the home you want, by text or voice.</p>
               </div>
               <button
                 onClick={() => setIsOpen(false)}
-                className="p-1.5 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white"
+                aria-label="Close"
+                className="p-1.5 rounded-md hover:bg-ink-800 text-ink-200 hover:text-white"
               >
                 <X size={16} />
               </button>
@@ -103,15 +103,16 @@ export default function ParichayVoiceAssistant() {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && submitQuery()}
-                  placeholder="Ask Parichay... (e.g. 3BHK near Metro under 1 Cr)"
-                  className="w-full bg-slate-950 text-white placeholder-slate-500 text-xs rounded-2xl py-3 pl-4 pr-20 border border-slate-800 focus:outline-none focus:border-indigo-500"
+                  placeholder="e.g. 3 BHK near metro under 1 Cr"
+                  className="w-full bg-ink-950 text-white placeholder-ink-400 text-sm rounded-md py-2.5 pl-3 pr-20 border border-ink-700 focus:outline-none focus:border-ink-300"
                 />
-                <div className="absolute right-2 top-1.5 flex items-center gap-1">
+                <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
                   <button
                     onClick={handleVoiceInput}
                     type="button"
-                    className={`p-1.5 rounded-xl text-slate-400 hover:text-white transition-all ${
-                      isListening ? 'bg-red-500 text-white animate-bounce' : 'hover:bg-slate-800'
+                    aria-label={isListening ? 'Listening' : 'Speak your query'}
+                    className={`p-1.5 rounded-md transition-colors ${
+                      isListening ? 'bg-brick-600 text-white' : 'text-ink-200 hover:text-white hover:bg-ink-800'
                     }`}
                   >
                     <Mic size={14} />
@@ -120,7 +121,8 @@ export default function ParichayVoiceAssistant() {
                     onClick={() => submitQuery()}
                     type="button"
                     disabled={loading}
-                    className="p-1.5 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition-all"
+                    aria-label="Send"
+                    className="p-1.5 rounded-md bg-brick-600 text-white hover:bg-brick-700 transition-colors disabled:opacity-50"
                   >
                     {loading ? <RefreshCw size={14} className="animate-spin" /> : <Send size={14} />}
                   </button>
@@ -130,20 +132,20 @@ export default function ParichayVoiceAssistant() {
 
             {/* Result Display */}
             {result && (
-              <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 text-xs space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-indigo-400">{result.personaCategory}</span>
-                  <span className="text-[10px] text-slate-400">Budget: {result.suggestedBudget}</span>
+              <div className="bg-ink-950 p-4 rounded-lg border border-ink-800 text-xs space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-semibold text-white">{result.personaCategory}</span>
+                  <span className="text-ink-200 tabular">Budget: {result.suggestedBudget}</span>
                 </div>
 
-                <p className="text-slate-300 text-[11px] leading-relaxed">{result.plainEnglishSummary}</p>
+                <p className="text-ink-200 leading-relaxed">{result.plainEnglishSummary}</p>
 
-                <div className="grid grid-cols-4 gap-1 text-[10px] text-center font-bold">
-                  <div className="bg-indigo-950/60 p-1.5 rounded text-indigo-300">ROI {result.roiWeight}%</div>
-                  <div className="bg-emerald-950/60 p-1.5 rounded text-emerald-300">Transit {result.transitWeight}%</div>
-                  <div className="bg-purple-950/60 p-1.5 rounded text-purple-300">Amenities {result.amenitiesWeight}%</div>
-                  <div className="bg-amber-950/60 p-1.5 rounded text-amber-300">Eco {result.ecoHealthWeight}%</div>
-                </div>
+                <dl className="grid grid-cols-4 gap-px bg-ink-800 border border-ink-800 rounded text-center tabular">
+                  <div className="bg-ink-950 p-1.5"><dt className="text-ink-300">ROI</dt><dd className="font-semibold text-white">{result.roiWeight}%</dd></div>
+                  <div className="bg-ink-950 p-1.5"><dt className="text-ink-300">Transit</dt><dd className="font-semibold text-white">{result.transitWeight}%</dd></div>
+                  <div className="bg-ink-950 p-1.5"><dt className="text-ink-300">Amenities</dt><dd className="font-semibold text-white">{result.amenitiesWeight}%</dd></div>
+                  <div className="bg-ink-950 p-1.5"><dt className="text-ink-300">Eco</dt><dd className="font-semibold text-white">{result.ecoHealthWeight}%</dd></div>
+                </dl>
               </div>
             )}
           </motion.div>

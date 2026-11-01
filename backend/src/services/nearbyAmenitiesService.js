@@ -22,7 +22,7 @@ const NAME_DENYLIST = {
   schools: [/coaching/i, /tuition/i, /tution/i, /\btrain(er|ing)?\b/i, /\bclasses\b/i, /\binstitute\b/i, /\bacademy\b/i, /driving school/i, /\bonline\b/i, /platform/i, /\byog(a)?\b/i, /\bland\b/i, /real estate/i],
   malls: [/supermarket/i, /grocery/i, /\bkirana\b/i, /general store/i, /housing society/i, /co-?op(erative)?/i, /\bapartment/i, /\bsaree\b/i, /\boutfit\b/i, /\bwear\b/i, /\bstore\b/i],
   supermarkets: [/\bmall\b/i],
-  hospitals: [/pharmacy/i, /chemist/i, /medical store/i, /diagnostic/i, /pathology/i],
+  hospitals: [/pharmacy/i, /chemist/i, /medical store/i, /diagnostic/i, /pathology/i, /^(?!.*hospital).*\b(clinic|pediatrician|vaccination|dental|dentist)\b/i],
   transit: [],
   parks: [],
 };

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { propertyAPI } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import ScoreRing from '../components/ui/ScoreRing';
 import ExplainerChatbot from '../components/ui/ExplainerChatbot';
 import NegotiationAdvisorModal from '../components/agents/NegotiationAdvisorModal';
@@ -9,13 +10,14 @@ import PropertyMapView from '../components/property/PropertyMapView';
 import PropertyReportModal from '../components/property/PropertyReportModal';
 import { 
   Building2, MapPin, Bed, Bath, Maximize, ArrowLeft, Heart, 
-  Share2, Sparkles, CloudSun, ShieldCheck, Phone, Mail, CheckCircle2,
+  Share2, CloudSun, ShieldCheck, Phone, Mail, Check,
   TrendingUp, Compass, Calendar, DollarSign, Handshake, FileText
 } from 'lucide-react';
 
 export default function PropertyDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   const [property, setProperty] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isSaved, setIsSaved] = useState(false);
@@ -63,8 +65,8 @@ export default function PropertyDetails() {
     return (
       <div className="container-app py-12 flex justify-center items-center min-h-[60vh]">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
-          <span className="text-sm font-semibold text-slate-500">Loading Property Intelligence...</span>
+          <div className="w-10 h-10 border-4 border-ink-100 border-t-ink-700 rounded-full animate-spin" />
+          <span className="text-sm font-semibold text-ink-500">Loading property…</span>
         </div>
       </div>
     );
@@ -85,17 +87,27 @@ export default function PropertyDetails() {
     );
   }
 
-  const { title, price, location, specifications, amenities, images, propertyType, aiScore, environmentScore, seller } = property;
+  const { title, price, location, specifications, amenities, images, propertyType, aiScore, environmentScore, seller, priceFairness } = property;
   const match = aiScore?.overall ?? null;
+  const fairnessColor = {
+    above: 'text-amber-600',
+    below: 'text-moss-600',
+    fair: 'text-slate-600',
+  }[priceFairness?.label];
+  const fairnessShort = {
+    above: `${priceFairness?.differencePct}% above nearby listings`,
+    below: `${Math.abs(priceFairness?.differencePct ?? 0)}% below nearby listings`,
+    fair: 'In line with nearby listings',
+  }[priceFairness?.label];
 
   return (
-    <div className="container-app pt-24 pb-16">
+    <div className="container-app pt-6 pb-16">
       {/* Back button */}
-      <button 
+      <button
         onClick={() => navigate(-1)}
-        className="inline-flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-indigo-600 mb-6 transition-colors"
+        className="inline-flex items-center gap-1.5 text-sm font-semibold text-ink-600 hover:text-ink-900 mb-5 transition-colors"
       >
-        <ArrowLeft size={16} /> Back to Listings
+        <ArrowLeft size={16} /> Back to listings
       </button>
 
       {/* Top Title & Actions Header */}
@@ -105,29 +117,33 @@ export default function PropertyDetails() {
             <span className="badge-ai">{propertyType || 'Apartment'}</span>
             {environmentScore?.overall && (
               <span className="badge-success">
-                <CloudSun size={12} /> AQI {environmentScore.aqi ?? 'N/A'} ({environmentScore.aqiLabel || 'Good'})
+                <CloudSun size={12} /> AQI {environmentScore.aqi ?? 'N/A'}{environmentScore.aqiLabel ? ` (${environmentScore.aqiLabel})` : ''}
               </span>
             )}
           </div>
-          <h1 className="text-2xl md:text-4xl font-extrabold text-slate-900 tracking-tight mb-1">{title}</h1>
-          <p className="text-xs md:text-sm text-slate-500 flex items-center gap-1.5 font-medium">
-            <MapPin size={14} className="text-indigo-500" />
+          <h1 className="text-2xl md:text-3xl font-bold text-ink-900 tracking-tight mb-1">{title}</h1>
+          <p className="text-sm text-ink-500 flex items-center gap-1.5">
+            <MapPin size={14} />
             {location?.address || location?.city || 'Location Details'}
           </p>
         </div>
 
         <div className="flex items-center gap-3 w-full md:w-auto">
           <div className="text-left md:text-right mr-4">
-            <div className="text-xs text-slate-400 font-bold uppercase tracking-wider">Property Price</div>
-            <div className="text-3xl font-extrabold text-indigo-600">{formatPrice(price)}</div>
+            <div className="text-xs text-ink-500 font-semibold">Asking price</div>
+            <div className="text-3xl font-bold text-brick-600 tabular">{formatPrice(price)}</div>
+            {fairnessShort && (
+              <div className={`text-xs font-bold mt-0.5 ${fairnessColor}`}>{fairnessShort}</div>
+            )}
           </div>
-          <button 
+          <button
             onClick={handleSave}
-            className={`p-3 rounded-2xl border transition-all ${
-              isSaved ? 'bg-rose-50 border-rose-200 text-rose-600' : 'bg-white border-slate-200 text-slate-600 hover:text-rose-500'
+            aria-label={isSaved ? 'Saved' : 'Save property'}
+            className={`p-3 rounded-md border transition-colors ${
+              isSaved ? 'bg-brick-50 border-brick-200 text-brick-600' : 'bg-white border-ink-200 text-ink-600 hover:text-brick-600'
             }`}
           >
-            <Heart size={20} className={isSaved ? "fill-rose-600" : ""} />
+            <Heart size={20} className={isSaved ? "fill-brick-600" : ""} />
           </button>
         </div>
       </div>
@@ -137,7 +153,7 @@ export default function PropertyDetails() {
         {/* Left Column: Image Gallery & Specifications */}
         <div className="lg:col-span-8 space-y-8">
           {/* Main Image */}
-          <div className="relative h-[420px] rounded-3xl overflow-hidden bg-slate-900 shadow-xl border border-slate-200/80">
+          <div className="relative h-[420px] rounded-lg overflow-hidden bg-ink-900">
             <img 
               src={images?.[0] || 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80'} 
               alt={title}
@@ -154,35 +170,29 @@ export default function PropertyDetails() {
                   </div>
                 )}
                 <div>
-                  <div className="text-lg font-extrabold">AI Compatibility Score</div>
-                  <div className="text-xs text-slate-300">Scored using lifestyle factors & location connectivity</div>
+                  <div className="text-lg font-bold">SmartSite score</div>
+                  <div className="text-xs text-ink-100">Based on lifestyle factors and location connectivity</div>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Specifications Bar */}
-          <div className="glass-card p-6 grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
-            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100">
-              <Bed size={20} className="text-indigo-600 mx-auto mb-1" />
-              <div className="text-lg font-extrabold text-slate-900">{specifications?.bedrooms || 0} BHK</div>
-              <div className="text-[10px] text-slate-500 font-bold uppercase">Bedrooms</div>
-            </div>
-            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100">
-              <Bath size={20} className="text-indigo-600 mx-auto mb-1" />
-              <div className="text-lg font-extrabold text-slate-900">{specifications?.bathrooms || 0}</div>
-              <div className="text-[10px] text-slate-500 font-bold uppercase">Bathrooms</div>
-            </div>
-            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100">
-              <Maximize size={20} className="text-indigo-600 mx-auto mb-1" />
-              <div className="text-lg font-extrabold text-slate-900">{specifications?.carpetArea || 0} sqft</div>
-              <div className="text-[10px] text-slate-500 font-bold uppercase">Carpet Area</div>
-            </div>
-            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100">
-              <Compass size={20} className="text-indigo-600 mx-auto mb-1" />
-              <div className="text-lg font-extrabold text-slate-900">{specifications?.facing || 'East'}</div>
-              <div className="text-[10px] text-slate-500 font-bold uppercase">Facing</div>
-            </div>
+          <div className="glass-card grid grid-cols-2 sm:grid-cols-4 divide-x divide-y sm:divide-y-0 divide-line">
+            {[
+              { icon: Bed, value: `${specifications?.bedrooms || 0} BHK`, label: 'Bedrooms' },
+              { icon: Bath, value: specifications?.bathrooms || 0, label: 'Bathrooms' },
+              { icon: Maximize, value: `${Number(specifications?.carpetArea || 0).toLocaleString('en-IN')} sq ft`, label: 'Carpet area' },
+              { icon: Compass, value: specifications?.facing || 'East', label: 'Facing' },
+            ].map(({ icon: Icon, value, label }) => (
+              <div key={label} className="p-5 flex items-center gap-3">
+                <Icon size={20} className="text-ink-400 flex-shrink-0" />
+                <div>
+                  <div className="text-lg font-bold text-ink-900 tabular">{value}</div>
+                  <div className="text-xs text-ink-500">{label}</div>
+                </div>
+              </div>
+            ))}
           </div>
 
           {/* Description */}
@@ -199,7 +209,7 @@ export default function PropertyDetails() {
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {(amenities || ['Lift', 'Gym', 'Parking', 'Security', 'Clubhouse']).map((amenity, i) => (
                 <div key={i} className="flex items-center gap-2 p-3 rounded-xl bg-slate-50 border border-slate-200/80 text-xs font-semibold text-slate-800">
-                  <CheckCircle2 size={16} className="text-emerald-500 flex-shrink-0" />
+                  <Check size={15} className="text-moss-600 flex-shrink-0" />
                   <span>{amenity}</span>
                 </div>
               ))}
@@ -210,14 +220,10 @@ export default function PropertyDetails() {
           <div className="glass-card p-8 space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-xl font-extrabold text-slate-900 flex items-center gap-2">
-                  <MapPin size={22} className="text-indigo-600" /> Interactive Spatial & Neighborhood Map
-                </h3>
-                <p className="text-xs text-slate-500 font-medium">Explore surrounding infrastructure, transit connectivity, and regional neighborhood data.</p>
+                <h3 className="text-lg font-bold text-ink-900">Location and neighbourhood</h3>
+                <p className="text-sm text-ink-500">Schools, hospitals, transit and what's around the property.</p>
               </div>
-              <span className="px-3 py-1 bg-indigo-50 text-indigo-700 font-bold text-xs rounded-full border border-indigo-100">
-                GPS Verified
-              </span>
+              <span className="badge-success">GPS verified</span>
             </div>
 
             <PropertyMapView 
@@ -232,57 +238,56 @@ export default function PropertyDetails() {
         {/* Right Column: AI Assistant & Contact Seller */}
         <div className="lg:col-span-4 space-y-6">
           {/* Seller Card */}
-          <div className="glass-card p-6 bg-gradient-to-br from-slate-900 to-indigo-950 text-white border-none shadow-xl">
+          <div className="glass-card p-6">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 rounded-2xl bg-indigo-500 flex items-center justify-center font-bold text-lg text-white">
+              <div className="w-11 h-11 rounded-full bg-ink-100 text-ink-800 flex items-center justify-center font-bold text-lg">
                 {seller?.name?.charAt(0) || 'S'}
               </div>
               <div>
-                <h4 className="text-sm font-bold text-white">{seller?.name || 'Verified Developer'}</h4>
-                <p className="text-xs text-indigo-300">Property Listing Agent</p>
-              </div>
-            </div>
-            
-            <div className="space-y-2 pt-4 border-t border-indigo-800/60 mb-6">
-              <div className="flex items-center gap-2 text-xs text-slate-300">
-                <Mail size={14} className="text-indigo-400" /> {seller?.email || 'contact@smartsite.com'}
-              </div>
-              <div className="flex items-center gap-2 text-xs text-slate-300">
-                <Phone size={14} className="text-emerald-400" /> {seller?.phone || '+91 98765 43210'}
+                <h4 className="text-sm font-bold text-ink-900">{seller?.name || 'Verified Developer'}</h4>
+                <p className="text-xs text-ink-500">Listed by</p>
               </div>
             </div>
 
-            <button 
+            <div className="space-y-2 pt-4 border-t border-line mb-5 text-sm text-ink-700">
+              <div className="flex items-center gap-2">
+                <Mail size={14} className="text-ink-400" /> {seller?.email || 'contact@smartsite.com'}
+              </div>
+              <div className="flex items-center gap-2 tabular">
+                <Phone size={14} className="text-ink-400" /> {seller?.phone || '+91 98765 43210'}
+              </div>
+            </div>
+
+            <button
               onClick={() => alert(`Inquiry sent to ${seller?.name || 'Seller'}! They will reach out shortly.`)}
-              className="btn-emerald w-full !py-3 text-xs flex items-center justify-center gap-2 mb-2"
+              className="btn-primary w-full !py-3 text-sm gap-2 mb-2"
             >
-              <Phone size={14} /> Request Callback
+              <Phone size={15} /> Request a callback
             </button>
 
             <button
-              onClick={() => setIsNegotiationOpen(true)}
-              className="w-full py-3 px-4 rounded-2xl bg-indigo-600/30 border border-indigo-500/40 text-indigo-200 text-xs font-bold hover:bg-indigo-600 hover:text-white transition-all flex items-center justify-center gap-2 mb-2"
+              onClick={() => (isAuthenticated ? setIsNegotiationOpen(true) : navigate('/login'))}
+              title={isAuthenticated ? undefined : 'Sign in to get negotiation advice'}
+              className="btn-secondary w-full !py-2.5 text-sm gap-2 mb-2"
             >
-              <Handshake size={16} /> Get AI Negotiation Strategy
+              <Handshake size={15} /> Negotiation advice
             </button>
 
             <button
               onClick={() => setIsReportOpen(true)}
-              className="w-full py-3 px-4 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs font-bold hover:bg-emerald-600 hover:text-white transition-all flex items-center justify-center gap-2"
+              className="btn-secondary w-full !py-2.5 text-sm gap-2"
             >
-              <FileText size={16} /> Download AI Audit Report
+              <FileText size={15} /> Full property report
             </button>
           </div>
 
-          {/* AI Reasoning Widget */}
+          {/* Score breakdown */}
           <div className="glass-card p-6">
-            <h4 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
-              <Sparkles size={16} className="text-indigo-600" /> AI Valuation Summary
-            </h4>
+            <h4 className="text-sm font-bold text-ink-900 mb-4">Score breakdown</h4>
             <div className="space-y-3">
               <div className="flex justify-between items-center text-xs pb-2 border-b border-slate-100">
                 <span className="text-slate-500 font-medium">ROI Potential Score</span>
-                <span className="font-bold text-emerald-600">
+                <span className="font-bold text-moss-600">
                   {aiScore?.roiPotential != null ? `${aiScore.roiPotential} / 100` : 'Not yet scored'}
                 </span>
               </div>
@@ -292,19 +297,25 @@ export default function PropertyDetails() {
                   {aiScore?.connectivityScore != null ? `${aiScore.connectivityScore} / 100` : 'Not yet scored'}
                 </span>
               </div>
-              <div className="flex justify-between items-center text-xs">
+              <div className="flex justify-between items-center text-xs pb-2 border-b border-slate-100">
                 <span className="text-slate-500 font-medium">Environmental Health</span>
                 <span className="font-bold text-slate-800">
                   {environmentScore?.overall != null ? `${environmentScore.overall} / 100` : 'Not yet scored'}
                 </span>
               </div>
+              {priceFairness && (
+                <div className="text-xs">
+                  <div className="text-slate-500 font-medium mb-0.5">Price vs. Nearby Listings</div>
+                  <div className={`font-bold ${fairnessColor || 'text-slate-600'}`}>{priceFairness.message}</div>
+                </div>
+              )}
             </div>
           </div>
 
           {/* Explainer AI Bot */}
           <ExplainerChatbot 
             property={property} 
-            color="#6366f1" 
+            color="#a8432a"
             onPoiUpdate={(pois, category) => {
               setActivePois(pois);
               setPoiCategory(category);

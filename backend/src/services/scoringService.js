@@ -10,8 +10,12 @@
 
 const axios = require('axios');
 
-const SCORING_ENGINE_URL = process.env.SCORING_ENGINE_URL || 'http://localhost:5001';
-const SCORING_TIMEOUT = 5000; // 5 second timeout
+const SCORING_ENGINE_URL = (process.env.SCORING_ENGINE_URL || 'http://localhost:5001').replace(/\/+$/, '');
+// Scoring runs in the background, so a long wait costs nothing. In production the
+// engine is a separate free-tier service that sleeps when idle and takes 30-60s to
+// wake; Render holds the request during the wake-up, so the timeout must outlast it.
+const SCORING_TIMEOUT = Number(process.env.SCORING_TIMEOUT_MS)
+  || (process.env.NODE_ENV === 'production' ? 90000 : 5000);
 
 /**
  * Scores a property by calling the Python Scoring Engine.

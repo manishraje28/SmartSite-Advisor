@@ -441,7 +441,7 @@ const autoSeed = async () => {
       preferredPropertyTypes: ['Apartment', 'Villa'],
       listingPreference: 'Sale',
       budget: { min: 5000000, max: 50000000 },
-      preferredLocations: ['Bangalore', 'Mumbai', 'Whitefield'],
+      preferredLocations: ['Mumbai', 'Thane', 'Navi Mumbai'],
       minBedrooms: 2,
       requiredAmenities: ['Gym', 'Parking'],
       buyerSegment: 'family',
@@ -524,3 +524,4 @@ const autoSeed = async () => {
 };
 
 module.exports = autoSeed;
+module.exports.sampleTitles = sampleProperties.map((p) => p.title);

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { GoogleMap, OverlayView, OverlayViewF, InfoWindowF, useJsApiLoader } from '@react-google-maps/api';
-import { MapPin, Sparkles, CloudSun, Compass, AlertTriangle } from 'lucide-react';
+import { MapPin, AlertTriangle, GraduationCap, Hospital, TrainFront, Trees, ShoppingBag, ShoppingCart } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
@@ -138,7 +138,8 @@ function PropertyPin({ price, verified, isHighlighted, onClick }) {
     ? `₹${(price / 100000).toFixed(0)}L`
     : `₹${price}`;
 
-  const pinColor = isHighlighted ? '#fbbf24' : verified ? '#10b981' : '#6366f1';
+  // Matched = brick (price colour, filled); verified = moss dot; otherwise ink on white.
+  const pinColor = isHighlighted ? '#a8432a' : '#16223a';
 
   return (
     <div
@@ -154,24 +155,23 @@ function PropertyPin({ price, verified, isHighlighted, onClick }) {
     >
       <div
         style={{
-          background: isHighlighted ? 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)' : verified ? '#0f172a' : '#1e293b',
-          color: '#ffffff',
-          padding: isHighlighted ? '8px 14px' : '6px 10px',
-          borderRadius: 24,
-          fontWeight: 800,
-          fontSize: isHighlighted ? 13 : 11,
-          border: `2px solid ${pinColor}`,
-          boxShadow: isHighlighted ? '0 0 20px rgba(124, 58, 237, 0.6), 0 4px 14px rgba(0,0,0,0.4)' : '0 4px 14px rgba(0,0,0,0.25)',
+          background: isHighlighted ? '#a8432a' : '#ffffff',
+          color: isHighlighted ? '#ffffff' : '#16223a',
+          padding: isHighlighted ? '6px 12px' : '4px 8px',
+          borderRadius: 4,
+          fontWeight: 700,
+          fontSize: isHighlighted ? 13 : 12,
+          fontVariantNumeric: 'tabular-nums',
+          border: `1px solid ${pinColor}`,
+          boxShadow: '0 1px 3px rgba(13,21,38,0.25)',
           display: 'flex',
           alignItems: 'center',
-          gap: 6,
+          gap: 5,
           whiteSpace: 'nowrap',
         }}
       >
-        {isHighlighted ? (
-          <span style={{ fontSize: 12 }}>✨</span>
-        ) : (
-          <span style={{ width: 8, height: 8, borderRadius: '50%', background: pinColor }} />
+        {verified && (
+          <span style={{ width: 7, height: 7, borderRadius: '50%', background: isHighlighted ? '#ffffff' : '#2f6a4b' }} />
         )}
         {priceLabel}
       </div>
@@ -179,28 +179,28 @@ function PropertyPin({ price, verified, isHighlighted, onClick }) {
         style={{
           width: 0,
           height: 0,
-          borderLeft: '7px solid transparent',
-          borderRight: '7px solid transparent',
-          borderTop: `11px solid ${pinColor}`,
+          borderLeft: '6px solid transparent',
+          borderRight: '6px solid transparent',
+          borderTop: `8px solid ${pinColor}`,
           marginTop: -1,
-          filter: 'drop-shadow(0 2px 1px rgba(0,0,0,0.3))',
         }}
       />
     </div>
   );
 }
 
-const POI_STYLES = {
-  school: { emoji: '🏫', color: '#ec4899' },
-  hospital: { emoji: '🏥', color: '#ef4444' },
-  metro: { emoji: '🚇', color: '#3b82f6' },
-  park: { emoji: '🌳', color: '#10b981' },
-  mall: { emoji: '🛍️', color: '#f59e0b' },
-  supermarket: { emoji: '🛒', color: '#f59e0b' },
+const POI_ICONS = {
+  school: GraduationCap,
+  hospital: Hospital,
+  metro: TrainFront,
+  park: Trees,
+  mall: ShoppingBag,
+  supermarket: ShoppingCart,
 };
 
 function PoiPin({ category, name, onClick }) {
-  const { emoji, color } = POI_STYLES[category] || { emoji: '📍', color: '#10b981' };
+  const Icon = POI_ICONS[category] || MapPin;
+  const color = '#16223a';
 
   return (
     <div
@@ -215,32 +215,31 @@ function PoiPin({ category, name, onClick }) {
     >
       <div
         style={{
-          background: '#0f172a',
+          background: color,
           color: '#ffffff',
-          padding: '5px 10px',
-          borderRadius: 16,
-          fontWeight: 700,
+          padding: '4px 8px',
+          borderRadius: 4,
+          fontWeight: 600,
           fontSize: 11,
-          border: `2px solid ${color}`,
-          boxShadow: '0 4px 14px rgba(0,0,0,0.35)',
+          border: `1px solid ${color}`,
+          boxShadow: '0 1px 3px rgba(13,21,38,0.25)',
           display: 'flex',
           alignItems: 'center',
           gap: 5,
           whiteSpace: 'nowrap',
         }}
       >
-        <span>{emoji}</span>
+        <Icon size={12} aria-hidden="true" />
         <span>{name}</span>
       </div>
       <div
         style={{
           width: 0,
           height: 0,
-          borderLeft: '6px solid transparent',
-          borderRight: '6px solid transparent',
-          borderTop: `9px solid ${color}`,
+          borderLeft: '5px solid transparent',
+          borderRight: '5px solid transparent',
+          borderTop: `7px solid ${color}`,
           marginTop: -1,
-          filter: 'drop-shadow(0 2px 1px rgba(0,0,0,0.3))',
         }}
       />
     </div>
@@ -312,11 +311,11 @@ export default function PropertyMapView({
 
   if (!GOOGLE_MAPS_API_KEY || loadError) {
     return (
-      <div className={`relative w-full ${heightClass} rounded-3xl overflow-hidden border border-slate-200 shadow-soft flex items-center justify-center bg-slate-50`}>
+      <div className={`relative w-full ${heightClass} rounded-lg overflow-hidden border border-line flex items-center justify-center bg-ink-50`}>
         <div className="text-center p-6">
-          <AlertTriangle className="mx-auto mb-2 text-amber-500" size={28} />
-          <p className="text-sm font-semibold text-slate-700">Map failed to load</p>
-          <p className="text-xs text-slate-500 mt-1">Check VITE_GOOGLE_MAPS_API_KEY in frontend/.env</p>
+          <AlertTriangle className="mx-auto mb-2 text-[#8a5a0b]" size={24} />
+          <p className="text-sm font-semibold text-ink-800">Map failed to load</p>
+          <p className="text-xs text-ink-500 mt-1">Check VITE_GOOGLE_MAPS_API_KEY in frontend/.env</p>
         </div>
       </div>
     );
@@ -324,14 +323,14 @@ export default function PropertyMapView({
 
   if (!isLoaded) {
     return (
-      <div className={`relative w-full ${heightClass} rounded-3xl overflow-hidden border border-slate-200 shadow-soft flex items-center justify-center bg-slate-50`}>
-        <div className="w-8 h-8 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
+      <div className={`relative w-full ${heightClass} rounded-lg overflow-hidden border border-line flex items-center justify-center bg-ink-50`}>
+        <div className="w-8 h-8 border-4 border-ink-100 border-t-ink-700 rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className={`relative w-full ${heightClass} rounded-3xl overflow-hidden border border-slate-200 shadow-soft z-0`}>
+    <div className={`relative w-full ${heightClass} rounded-lg overflow-hidden border border-line z-0`}>
       <GoogleMap
         mapContainerStyle={containerStyle}
         center={defaultCenter}
@@ -372,36 +371,32 @@ export default function PropertyMapView({
                 <img
                   src={prop.images?.[0] || 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=800&q=80'}
                   alt={prop.title}
-                  className="w-full h-28 object-cover rounded-xl mb-2"
+                  className="w-full h-28 object-cover rounded mb-2"
                 />
-                <div className="flex items-center gap-1 text-[10px] font-bold text-indigo-600 uppercase mb-1">
-                  <Sparkles size={12} /> {prop.aiScore?.overall != null ? `${prop.aiScore.overall}% AI Match` : 'Not yet scored'}
-                </div>
-                <h4 className="font-bold text-slate-900 text-sm truncate mb-1">{prop.title}</h4>
-                <p className="text-slate-500 text-xs truncate mb-2">{prop.location?.address || prop.location?.city}</p>
+                <div className="text-base font-bold text-brick-600 tabular">{formatPrice(prop.price)}</div>
+                <h4 className="font-semibold text-ink-900 text-sm truncate mt-0.5">{prop.title}</h4>
+                <p className="text-ink-500 text-xs truncate mb-2">{prop.location?.address || prop.location?.city}</p>
 
-                <div className="flex items-center justify-between border-t border-slate-100 pt-2 mb-2">
-                  <span className="font-extrabold text-slate-900 text-sm">{formatPrice(prop.price)}</span>
+                <div className="flex items-center justify-between border-t border-line pt-2 mb-2 text-xs text-ink-700 tabular">
+                  <span>{prop.aiScore?.overall != null ? `Score ${prop.aiScore.overall}` : 'Not yet scored'}</span>
                   {prop.environmentScore?.aqi != null && (
-                    <span className="text-[11px] font-bold text-emerald-600 flex items-center gap-1">
-                      <CloudSun size={12} /> AQI {prop.environmentScore.aqi}
-                    </span>
+                    <span>AQI {prop.environmentScore.aqi}</span>
                   )}
                 </div>
 
                 <div className="flex gap-2">
                   <Link
                     to={`/property/${prop._id}`}
-                    className="flex-1 py-1.5 px-2 bg-slate-900 text-white rounded-lg text-xs font-semibold text-center hover:bg-slate-800 transition-colors"
+                    className="flex-1 py-1.5 px-2 bg-ink-900 text-white rounded-md text-xs font-semibold text-center hover:bg-ink-800 transition-colors no-underline"
                   >
-                    View Details
+                    View details
                   </Link>
                   {onOpenReport && (
                     <button
                       onClick={() => onOpenReport(prop)}
-                      className="py-1.5 px-2 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-semibold hover:bg-indigo-100 transition-colors"
+                      className="py-1.5 px-2 border border-ink-200 text-ink-800 rounded-md text-xs font-semibold hover:border-ink-400 transition-colors"
                     >
-                      AI Report
+                      Report
                     </button>
                   )}
                 </div>
@@ -427,32 +422,30 @@ export default function PropertyMapView({
               options={{ pixelOffset: new window.google.maps.Size(0, -42) }}
             >
               <div className="p-2 text-center">
-                <h5 className="font-bold text-slate-900 text-xs">{poi.name}</h5>
-                <p className="text-[11px] text-indigo-600 font-semibold mt-1">📍 {poi.distance} from property</p>
+                <h5 className="font-semibold text-ink-900 text-xs">{poi.name}</h5>
+                <p className="text-[11px] text-ink-500 mt-1 tabular">{poi.distance} from property</p>
               </div>
             </InfoWindowF>
           );
         })}
       </GoogleMap>
 
-      {/* Floating Info & Active Filter Badges */}
-      <div className="absolute top-4 right-4 z-[100] flex flex-col items-end gap-2 pointer-events-none">
-        <div className="bg-slate-900/90 backdrop-blur-md text-white text-xs font-bold px-4 py-2 rounded-full border border-white/20 shadow-lg flex items-center gap-2 pointer-events-auto">
-          <MapPin size={14} className="text-emerald-400" />
-          {isSingleProperty ? 'Neighborhood & Spatial View' : `Showing ${mappedProperties.length} Regional Properties`}
+      {/* Map status badges */}
+      <div className="absolute top-3 right-3 z-[100] flex flex-col items-end gap-1.5 pointer-events-none">
+        <div className="bg-white text-ink-800 text-xs font-semibold px-2.5 py-1 rounded border border-line flex items-center gap-1.5 pointer-events-auto">
+          <MapPin size={13} className="text-ink-500" />
+          {isSingleProperty ? 'Neighbourhood view' : `Showing ${mappedProperties.length} properties`}
         </div>
 
         {activePoiCategory && (
-          <div className="bg-amber-500/90 backdrop-blur-md text-slate-950 text-xs font-extrabold px-4 py-2 rounded-full border border-amber-300 shadow-xl flex items-center gap-2 pointer-events-auto">
-            <Compass size={14} className="text-slate-950" />
-            Showing POIs: {activePoiCategory} ({customPois.length} Found)
+          <div className="bg-white text-ink-800 text-xs font-semibold px-2.5 py-1 rounded border border-line pointer-events-auto tabular">
+            Showing nearby {activePoiCategory} ({customPois.length} found)
           </div>
         )}
 
         {highlightedPropertyIds.length > 0 && (
-          <div className="bg-indigo-600/95 backdrop-blur-md text-white text-xs font-extrabold px-4 py-2 rounded-full border border-indigo-400 shadow-xl flex items-center gap-2 pointer-events-auto">
-            <Sparkles size={14} className="text-amber-300" />
-            ✨ {highlightedPropertyIds.length} Properties Matched Your Natural Language Query!
+          <div className="bg-ink-900 text-white text-xs font-semibold px-2.5 py-1 rounded pointer-events-auto tabular">
+            {highlightedPropertyIds.length} properties match your search
           </div>
         )}
       </div>

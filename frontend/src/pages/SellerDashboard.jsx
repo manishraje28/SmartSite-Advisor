@@ -2,34 +2,28 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { sellerAPI, propertyAPI } from '../services/api';
+import { sellerAPI } from '../services/api';
 import ScoreRing from '../components/ui/ScoreRing';
 import ConstructorUpgradeWidget from '../components/agents/ConstructorUpgradeWidget';
-import {
-  BarChart3, TrendingUp, Eye, Heart, MessageCircle, Plus,
-  ArrowUpRight, ChevronRight, Sparkles, Target, Zap,
-  CheckCircle2, AlertTriangle, Info, Star
-} from 'lucide-react';
+import { Plus, CheckCircle2, AlertTriangle, Info } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, RadarChart,
   PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar
 } from 'recharts';
 
-const fadeUp = {
-  hidden: { opacity: 0, y: 20 },
-  visible: (i = 0) => ({
-    opacity: 1, y: 0,
-    transition: { delay: i * 0.08, duration: 0.5 },
-  }),
-};
+// Chart colours mirror the ink / moss tokens in index.css (recharts needs hex).
+const INK_700 = '#2c3b52';
+const INK_500 = '#4f6584';
+const MOSS_600 = '#2f6a4b';
+const LINE = '#dfe2e7';
 
 const CustomTooltip = ({ active, payload, label }) => {
   if (active && payload?.length) {
     return (
-      <div className="glass-card-strong px-4 py-3 text-xs rounded-xl">
-        <p className="font-semibold text-on-surface mb-1">{label}</p>
+      <div className="bg-white border border-line rounded-md px-3 py-2 text-xs">
+        <p className="font-semibold text-ink-900 mb-1">{label}</p>
         {payload.map((entry, i) => (
-          <p key={i} style={{ color: entry.color }} className="leading-relaxed">{entry.name}: {entry.value}</p>
+          <p key={i} style={{ color: entry.color }} className="leading-relaxed tabular">{entry.name}: {entry.value}</p>
         ))}
       </div>
     );
@@ -60,7 +54,7 @@ export default function SellerDashboard() {
       if (insRes.data.success) {
         const newInsights = insRes.data.data.insights || insRes.data.data || [];
         setInsights(newInsights);
-        
+
         // Ensure UI updates if currently selected property data changed
         setSelectedProperty(current => {
           if (!current && newInsights.length > 0) return newInsights[0];
@@ -114,136 +108,84 @@ export default function SellerDashboard() {
 
   if (loading) {
     return (
-      <div className="container-app py-6 pb-12">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          {[1, 2, 3, 4].map(i => (
-            <div key={i} className="glass-card h-28 animate-pulse" />
-          ))}
-        </div>
-        <div className="grid lg:grid-cols-[1fr_320px] gap-6">
-          <div className="glass-card h-80 animate-pulse" />
-          <div className="glass-card h-80 animate-pulse" />
-        </div>
+      <div className="container-app pt-8 pb-12 flex justify-center">
+        <div className="w-8 h-8 border-4 border-ink-100 border-t-ink-700 rounded-full animate-spin" role="status" aria-label="Loading" />
       </div>
     );
   }
 
   return (
-    <div className="container-app pt-24 pb-12">
+    <div className="container-app pt-8 pb-12">
       {/* Header */}
-      <motion.div initial="hidden" animate="visible" className="flex items-center justify-between mb-6 flex-wrap gap-4">
-        <motion.div variants={fadeUp} custom={0}>
-          <div className="flex items-center gap-2.5 mb-1.5">
-            <div className="w-9 h-9 rounded-xl bg-emerald-500/15 flex items-center justify-center">
-              <BarChart3 size={18} className="text-emerald-400" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold leading-tight">Seller Intelligence</h1>
-              <p className="text-xs text-on-surface-variant">
-                AI-powered analytics for your {insights.length} properties
-              </p>
-            </div>
-          </div>
-        </motion.div>
-        <motion.div variants={fadeUp} custom={1}>
-          <Link to="/seller/properties/create" className="btn-primary !px-6 !py-3 flex items-center gap-2 no-underline text-sm shadow-lg shadow-indigo-500/20">
-            <Plus size={16} />
-            Add Property
-          </Link>
-        </motion.div>
-      </motion.div>
+      <div className="flex items-end justify-between mb-6 flex-wrap gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-ink-900">Seller dashboard</h1>
+          <p className="text-sm text-ink-500 mt-1 tabular">
+            Views, inquiries and scores for your {insights.length} listings
+          </p>
+        </div>
+        <Link to="/seller/properties/create" className="btn-primary flex items-center gap-2 no-underline text-sm">
+          <Plus size={16} />
+          Add property
+        </Link>
+      </div>
 
       {/* Stats Row */}
-      <motion.div initial="hidden" animate="visible" className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div className="glass-card grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-line mb-8">
         {[
-          { label: 'Avg AI Score', value: avgScore, icon: Star, color: 'text-indigo-400', bgColor: 'from-indigo-500/15' },
-          { label: 'Total Views', value: totalViews.toLocaleString(), icon: Eye, color: 'text-emerald-400', bgColor: 'from-emerald-500/15' },
-          { label: 'Total Saves', value: totalSaves.toLocaleString(), icon: Heart, color: 'text-pink-400', bgColor: 'from-pink-500/15' },
-          { label: 'Inquiries', value: totalInquiries.toLocaleString(), icon: MessageCircle, color: 'text-amber-400', bgColor: 'from-amber-500/15' },
-        ].map((stat, i) => (
-          <motion.div
-            key={stat.label}
-            variants={fadeUp}
-            custom={i}
-            className={`glass-card p-6 bg-gradient-to-br ${stat.bgColor} to-transparent`}
-          >
-            <div className="flex items-center justify-between mb-3">
-              <div className={`w-9 h-9 rounded-xl ${stat.bgColor.replace('from-', 'bg-').replace('/15', '/10')} flex items-center justify-center`}>
-                <stat.icon size={17} className={stat.color} />
-              </div>
-              <ArrowUpRight size={14} className="text-emerald-400" />
-            </div>
-            <div className="text-2xl font-bold text-on-surface mb-0.5">{stat.value}</div>
-            <div className="text-xs text-on-surface-variant">{stat.label}</div>
-          </motion.div>
+          { label: 'Average score', value: avgScore },
+          { label: 'Total views', value: totalViews.toLocaleString() },
+          { label: 'Total saves', value: totalSaves.toLocaleString() },
+          { label: 'Inquiries', value: totalInquiries.toLocaleString() },
+        ].map((stat) => (
+          <div key={stat.label} className="p-5">
+            <div className="text-xs text-ink-500 mb-1">{stat.label}</div>
+            <div className="text-2xl font-bold text-ink-900 tabular">{stat.value}</div>
+          </div>
         ))}
-      </motion.div>
+      </div>
 
       <div className="grid lg:grid-cols-[1fr_320px] gap-6">
         {/* ── Left Column ── */}
         <div className="space-y-6">
           {/* Trend Chart */}
-          <motion.div variants={fadeUp} custom={2} initial="hidden" animate="visible" className="glass-card p-6">
-            <div className="flex items-center justify-between mb-5">
-              <h3 className="font-semibold flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-emerald-500/15 flex items-center justify-center">
-                  <TrendingUp size={15} className="text-emerald-400" />
-                </div>
-                <span className="text-sm">Weekly Engagement Trend</span>
-              </h3>
-            </div>
+          <div className="glass-card p-6">
+            <h2 className="text-lg font-bold text-ink-900 mb-4">Weekly views and inquiries</h2>
             {trendData.length > 0 ? (
               <ResponsiveContainer width="100%" height={240}>
                 <AreaChart data={trendData} margin={{ top: 5, right: 10, bottom: 5, left: 0 }}>
-                  <defs>
-                    <linearGradient id="colorViews" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
-                    </linearGradient>
-                    <linearGradient id="colorInq" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <XAxis dataKey="week" stroke="#6b7499" fontSize={11} tickLine={false} axisLine={false} />
-                  <YAxis stroke="#6b7499" fontSize={11} tickLine={false} axisLine={false} />
+                  <XAxis dataKey="week" stroke={INK_500} fontSize={11} tickLine={false} axisLine={false} />
+                  <YAxis stroke={INK_500} fontSize={11} tickLine={false} axisLine={false} />
                   <Tooltip content={<CustomTooltip />} />
-                  <Area type="monotone" dataKey="views" name="Views" stroke="#6366f1" fill="url(#colorViews)" strokeWidth={2} />
-                  <Area type="monotone" dataKey="inquiries" name="Inquiries" stroke="#10b981" fill="url(#colorInq)" strokeWidth={2} />
+                  <Area type="monotone" dataKey="views" name="Views" stroke={INK_700} fill={INK_700} fillOpacity={0.08} strokeWidth={2} />
+                  <Area type="monotone" dataKey="inquiries" name="Inquiries" stroke={MOSS_600} fill={MOSS_600} fillOpacity={0.08} strokeWidth={2} />
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-[240px] flex items-center justify-center text-on-surface-variant text-sm">
-                No trend data available
+              <div className="h-[240px] flex items-center justify-center text-ink-500 text-sm">
+                No trend data yet
               </div>
             )}
-          </motion.div>
+          </div>
 
-          {/* Autonomous Constructor Upgrade Agent Widget */}
+          {/* Constructor Upgrade Widget */}
           <ConstructorUpgradeWidget property={selectedProperty || insights[0]?.property} />
 
           {/* Properties List */}
-          <motion.div variants={fadeUp} custom={3} initial="hidden" animate="visible" className="glass-card p-6">
-            <h3 className="font-semibold flex items-center gap-2.5 mb-5">
-              <div className="w-8 h-8 rounded-lg bg-indigo-500/15 flex items-center justify-center">
-                <Target size={15} className="text-indigo-400" />
-              </div>
-              <span className="text-sm">Your Properties</span>
-            </h3>
-            <div className="space-y-3">
+          <div className="glass-card">
+            <h2 className="text-lg font-bold text-ink-900 px-6 pt-6 pb-3">Your listings</h2>
+            <div className="divide-y divide-line border-t border-line">
               {insights.map((insight, i) => {
                 const prop = insight.property || {};
                 const score = insight.currentScore?.overall || 0;
                 const isSelected = selectedProperty?._id === insight._id;
                 return (
-                  <motion.div
+                  <div
                     key={insight._id}
-                    whileHover={{ x: 4 }}
                     onClick={() => setSelectedProperty(insight)}
-                    className={`flex items-center gap-4 p-3.5 rounded-xl cursor-pointer transition-all duration-200 ${isSelected ? 'bg-indigo-500/10 border border-indigo-500/15' : 'bg-surface-container-highest/40 hover:bg-surface-container-highest/70 border border-transparent'
-                      }`}
+                    className={`flex items-center gap-4 px-6 py-3.5 cursor-pointer transition-colors border-l-2 ${isSelected ? 'bg-ink-50 border-l-ink-900' : 'border-l-transparent hover:bg-ink-50'}`}
                   >
-                    <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0">
+                    <div className="w-14 h-14 rounded-md overflow-hidden flex-shrink-0 bg-ink-100">
                       <img
                         src={prop.images?.[0] || '/images/property-1.png'}
                         alt={prop.title}
@@ -251,63 +193,53 @@ export default function SellerDashboard() {
                       />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="font-medium text-sm text-on-surface truncate">{prop.title || `Property #${i + 1}`}</div>
-                      <div className="text-xs text-on-surface-variant mt-0.5">{prop.location?.city || 'N/A'} • {insight.demandLevel}</div>
+                      <div className="font-semibold text-sm text-ink-900 truncate">{prop.title || `Property #${i + 1}`}</div>
+                      <div className="text-xs text-ink-500 mt-0.5">{prop.location?.city || 'N/A'} · {insight.demandLevel}</div>
                     </div>
                     <ScoreRing score={score} size={44} strokeWidth={4} />
-                  </motion.div>
+                  </div>
                 );
               })}
             </div>
-          </motion.div>
+          </div>
         </div>
 
         {/* ── Right Column ── */}
         <div className="space-y-5">
           {/* Radar Chart */}
           {radarData.length > 0 && (
-            <motion.div variants={fadeUp} custom={4} initial="hidden" animate="visible" className="glass-card p-6">
-              <h4 className="font-semibold text-sm mb-4 flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-lg bg-indigo-500/15 flex items-center justify-center">
-                  <Zap size={13} className="text-indigo-400" />
-                </div>
-                Score Breakdown
-              </h4>
+            <div className="glass-card p-6">
+              <h2 className="text-base font-bold text-ink-900 mb-4">Score breakdown</h2>
               <ResponsiveContainer width="100%" height={210}>
                 <RadarChart data={radarData}>
-                  <PolarGrid stroke="rgba(42, 51, 82, 0.5)" />
-                  <PolarAngleAxis dataKey="subject" tick={{ fill: '#9ba3c2', fontSize: 11 }} />
+                  <PolarGrid stroke={LINE} />
+                  <PolarAngleAxis dataKey="subject" tick={{ fill: INK_500, fontSize: 11 }} />
                   <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-                  <Radar name="Score" dataKey="A" stroke="#6366f1" fill="#6366f1" fillOpacity={0.2} strokeWidth={2} />
+                  <Radar name="Score" dataKey="A" stroke={INK_700} fill={INK_700} fillOpacity={0.15} strokeWidth={2} />
                 </RadarChart>
               </ResponsiveContainer>
-            </motion.div>
+            </div>
           )}
 
-          {/* AI Suggestions */}
-          <motion.div variants={fadeUp} custom={5} initial="hidden" animate="visible" className="glass-card p-6">
-            <h4 className="font-semibold text-sm mb-5 flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-lg bg-emerald-500/15 flex items-center justify-center">
-                <Sparkles size={13} className="text-emerald-400" />
-              </div>
-              AI Suggestions
-            </h4>
-            <div className="space-y-3">
+          {/* Suggestions */}
+          <div className="glass-card p-6">
+            <h2 className="text-base font-bold text-ink-900 mb-3">Suggested improvements</h2>
+            <div className="divide-y divide-line">
               {(selectedProperty?.improvementSuggestions || []).slice(0, 4).map((sug, i) => {
                 const priorityColors = {
-                  high: { icon: AlertTriangle, color: 'text-amber-400', bg: 'bg-amber-500/10' },
-                  medium: { icon: Info, color: 'text-indigo-400', bg: 'bg-indigo-500/10' },
-                  low: { icon: CheckCircle2, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
+                  high: { icon: AlertTriangle, color: 'text-[#8a5a0b]' },
+                  medium: { icon: Info, color: 'text-ink-500' },
+                  low: { icon: CheckCircle2, color: 'text-moss-600' },
                 };
                 const p = priorityColors[sug.priority] || priorityColors.medium;
                 return (
-                  <div key={i} className={`p-3.5 rounded-xl ${p.bg}`}>
+                  <div key={i} className="py-3 first:pt-0 last:pb-0">
                     <div className="flex items-start gap-2.5">
                       <p.icon size={15} className={`${p.color} mt-0.5 flex-shrink-0`} />
                       <div>
-                        <p className="text-xs text-on-surface leading-relaxed">{sug.message}</p>
+                        <p className="text-sm text-ink-900 leading-relaxed">{sug.message}</p>
                         {sug.impact && (
-                          <span className="text-[10px] text-on-surface-variant mt-1.5 inline-block font-medium">
+                          <span className="text-xs text-ink-500 mt-1 inline-block tabular">
                             Impact: +{sug.impact}%
                           </span>
                         )}
@@ -317,39 +249,34 @@ export default function SellerDashboard() {
                 );
               })}
               {(!selectedProperty?.improvementSuggestions || selectedProperty.improvementSuggestions.length === 0) && (
-                <p className="text-xs text-on-surface-variant text-center py-6">Select a property to see suggestions</p>
+                <p className="text-sm text-ink-500 py-4">Select a listing to see suggestions.</p>
               )}
             </div>
-          </motion.div>
+          </div>
 
           {/* Buyer Segments */}
           {segmentData.length > 0 && (
-            <motion.div variants={fadeUp} custom={6} initial="hidden" animate="visible" className="glass-card p-6">
-              <h4 className="font-semibold text-sm mb-5 flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-lg bg-indigo-500/15 flex items-center justify-center">
-                  <Target size={13} className="text-indigo-400" />
-                </div>
-                Buyer Segments
-              </h4>
-              <div className="space-y-6">
+            <div className="glass-card p-6">
+              <h2 className="text-base font-bold text-ink-900 mb-4">Buyer segments</h2>
+              <div className="space-y-4">
                 {segmentData.map(seg => (
                   <div key={seg.segment}>
-                    <div className="flex justify-between text-sm mb-2.5">
-                      <span className="text-on-surface-variant">{seg.segment}</span>
-                      <span className="font-semibold text-on-surface">{seg.match}%</span>
+                    <div className="flex justify-between text-sm mb-1.5">
+                      <span className="text-ink-700">{seg.segment}</span>
+                      <span className="font-semibold text-ink-900 tabular">{seg.match}%</span>
                     </div>
-                    <div className="h-2.5 rounded-full bg-surface-container-highest overflow-hidden">
+                    <div className="h-2 rounded-full bg-ink-100 overflow-hidden">
                       <motion.div
                         initial={{ width: 0 }}
                         animate={{ width: `${seg.match}%` }}
                         transition={{ duration: 0.8 }}
-                        className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-emerald-500"
+                        className="h-full rounded-full bg-ink-700"
                       />
                     </div>
                   </div>
                 ))}
               </div>
-            </motion.div>
+            </div>
           )}
         </div>
       </div>

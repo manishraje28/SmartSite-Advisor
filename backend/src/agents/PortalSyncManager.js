@@ -1,6 +1,47 @@
+const crypto = require('crypto');
 const Property = require('../models/Property');
+const User = require('../models/User');
+const SellerInsights = require('../models/SellerInsights');
 const RealEstateScraperAgent = require('./RealEstateScraperAgent');
 const { scoringPropertyAsync } = require('../services/propertyService');
+
+const SYNC_AGENT_EMAIL = 'syncagent@smartsite.com';
+
+/**
+ * The system account that owns scraped listings. Its password is random and never
+ * stored anywhere, so nobody can sign in as it and edit or delete those listings.
+ */
+async function getSyncAgentUser() {
+  const existing = await User.findOne({ email: SYNC_AGENT_EMAIL });
+  if (existing) return existing;
+  return User.create({
+    name: 'SmartSite Portal Sync Agent',
+    email: SYNC_AGENT_EMAIL,
+    password: crypto.randomBytes(24).toString('hex'),
+    role: 'seller',
+    phone: '+91 98765 00000',
+    isVerified: true,
+  });
+}
+
+/**
+ * One-off fix for data created before scraped listings had their own owner: they
+ * were assigned to the first seller account, i.e. the public demo seller. The demo
+ * seller keeps only its seeded sample listings (matched by title from autoSeed);
+ * every other listing it owns, and that listing's SellerInsights, moves to the
+ * sync agent. Idempotent.
+ */
+async function reassignScrapedListingsFromDemoSeller() {
+  const { sampleTitles } = require('../utils/autoSeed');
+  const demoSeller = await User.findOne({ email: 'seller@smartsite.com' });
+  if (!demoSeller) return;
+  const scrapedIds = await Property.distinct('_id', { seller: demoSeller._id, title: { $nin: sampleTitles } });
+  if (!scrapedIds.length) return;
+  const syncAgent = await getSyncAgentUser();
+  await Property.updateMany({ _id: { $in: scrapedIds } }, { $set: { seller: syncAgent._id } });
+  await SellerInsights.updateMany({ property: { $in: scrapedIds } }, { $set: { seller: syncAgent._id } });
+  console.log(`🔐 Moved ${scrapedIds.length} scraped listings from the demo seller to the sync agent account.`);
+}
 
 /**
  * PortalSyncManager
@@ -60,19 +101,9 @@ class PortalSyncManager {
 
           syncedDocs.push({ property: existing, action: priceChanged ? 'PRICE_UPDATED' : 'SYNCED' });
         } else {
-          // Find default seller user for scraped listings
-          const User = require('../models/User');
-          let sellerUser = await User.findOne({ role: 'seller' });
-          if (!sellerUser) {
-            sellerUser = await User.create({
-              name: 'SmartSite Portal Sync Agent',
-              email: 'syncagent@smartsite.com',
-              password: 'password123',
-              role: 'seller',
-              phone: '+91 98765 00000',
-              isVerified: true
-            });
-          }
+          // Scraped listings belong to a dedicated system account, never to a real
+          // (or public demo) seller who could then edit or delete them.
+          const sellerUser = await getSyncAgentUser();
 
           // Insert fresh scraped listing into MongoDB
           const loc = item.location || { address: `${item.locality}, ${item.city}`, city: item.city, state: 'Maharashtra', lat: 19.0760, lng: 72.8777 };
@@ -149,5 +180,7 @@ class PortalSyncManager {
     };
   }
 }
+
+PortalSyncManager.reassignScrapedListingsFromDemoSeller = reassignScrapedListingsFromDemoSeller;
 
 module.exports = PortalSyncManager;

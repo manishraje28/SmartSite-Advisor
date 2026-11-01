@@ -1,6 +1,19 @@
 const express = require('express');
 const router = express.Router();
 const agentController = require('../controllers/agentController');
+const { protect, blockDemoAccounts } = require('../middlewares/auth');
+const { sendError } = require('../utils/apiResponse');
+const { scraperEnabled: isScraperEnabled } = require('../config/features');
+
+// Every agent calls the Groq LLM (and the scrape routes launch Playwright), so none
+// of them can be open to anonymous traffic.
+router.use(protect);
+
+// Scraping needs a full browser install and lots of memory (see config/features.js).
+const scraperEnabled = (req, res, next) =>
+  isScraperEnabled()
+    ? next()
+    : sendError(res, 503, 'Live listing sync is disabled on this server.');
 
 // 1. Parichay Buyer Persona Profiling
 router.post('/profile', agentController.profileBuyer);
@@ -21,9 +34,9 @@ router.post('/upgrade', agentController.evaluateConstructorUpgrade);
 router.post('/debate', agentController.runMultiAgentDebate);
 
 // 7. Live Real Estate Harvester & Scraper Agent
-router.post('/scrape/search', agentController.harvestLiveListings);
+router.post('/scrape/search', scraperEnabled, blockDemoAccounts, agentController.harvestLiveListings);
 
 // 8. On-Demand Property Portal Live Sync
-router.post('/scrape/sync/:propertyId', agentController.syncSingleProperty);
+router.post('/scrape/sync/:propertyId', scraperEnabled, blockDemoAccounts, agentController.syncSingleProperty);
 
 module.exports = router;

@@ -1,8 +1,13 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { MapPin, Bed, Bath, Maximize, Heart, TrendingUp, Sparkles, Building2, CloudSun } from 'lucide-react';
+import { MapPin, Heart } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { propertyAPI } from '../../services/api';
+
+const scoreTone = (score) => {
+  if (score >= 80) return 'text-moss-700 bg-moss-50 border-moss-100';
+  if (score >= 60) return 'text-[#8a5a0b] bg-[#fdf6e7] border-[#f3e2b8]';
+  return 'text-[#b42318] bg-[#fdf1f0] border-[#f6d3cf]';
+};
 
 export default function PropertyCard({ property, matchPercentage, onOpenReport }) {
   const [isSaved, setIsSaved] = useState(false);
@@ -33,7 +38,7 @@ export default function PropertyCard({ property, matchPercentage, onOpenReport }
 
   const {
     _id, title, price, location, specifications, images,
-    propertyType, aiScore
+    propertyType
   } = property;
 
   const formatPrice = (p) => {
@@ -43,137 +48,101 @@ export default function PropertyCard({ property, matchPercentage, onOpenReport }
     return `₹${p}`;
   };
 
-  const match = matchPercentage || aiScore?.overall || 0;
-  const environmentalScore = property.environmentScore?.overall ?? null;
-
-  const getScoreTheme = (score) => {
-    if (score >= 80) return { text: 'text-ai-emerald', bg: 'bg-ai-emerald/10', border: 'border-ai-emerald/20' };
-    if (score >= 60) return { text: 'text-amber-500', bg: 'bg-amber-500/10', border: 'border-amber-500/20' };
-    return { text: 'text-rose-500', bg: 'bg-rose-500/10', border: 'border-rose-500/20' };
-  };
-
-  const theme = getScoreTheme(match);
-  const environmentalTheme = getScoreTheme(environmentalScore || 0);
+  const match = matchPercentage || property.aiScore?.overall || 0;
+  const env = property.environmentScore;
+  // Dot-joined specs ("3 BHK · 2 bath") are the property-portal convention; the scanner's SD4d flag here is expected.
+  const specs = [
+    specifications?.bedrooms ? `${specifications.bedrooms} BHK` : null,
+    specifications?.bathrooms ? `${specifications.bathrooms} bath` : null,
+    specifications?.carpetArea ? `${Number(specifications.carpetArea).toLocaleString('en-IN')} sq ft` : null,
+  ].filter(Boolean);
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      whileHover={{ y: -6 }}
-      transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-      className="relative group flex flex-col bg-white rounded-3xl border border-slate-200/60 overflow-hidden shadow-soft hover:shadow-card-hover transition-all duration-500"
-    >
-      {/* ── IMAGE SECTION ── */}
-      <div className="relative h-56 overflow-hidden bg-slate-100 flex-shrink-0">
-        <img
-          src={images?.[0] || 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'}
-          alt={title || 'Property'}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/20 to-transparent opacity-80" />
-
-        {/* Top Badges */}
-        <div className="absolute top-4 left-4 right-4 flex justify-between items-start">
-          <div className="flex flex-col gap-2">
-            {property.verifiedLive && (
-              <div className="px-3 py-1 rounded-full bg-emerald-500/90 backdrop-blur-md border border-emerald-400/50 flex items-center gap-1.5 shadow-sm">
-                <span className="w-2 h-2 rounded-full bg-white animate-ping" />
-                <span className="text-[11px] font-bold text-white tracking-wide uppercase">
-                  Verified Live ({property.sourcePortal || 'Portal'})
-                </span>
-              </div>
-            )}
-
-            {match > 0 ? (
-              <div className={`px-3 py-1.5 rounded-full flex items-center gap-1.5 backdrop-blur-md border ${theme.bg} ${theme.border}`}>
-                <Sparkles size={14} className={theme.text} />
-                <span className={`text-xs font-bold ${theme.text}`}>{match}% AI Match</span>
-              </div>
-            ) : <div />}
-
-            {environmentalScore !== null && (
-              <div className={`px-3 py-1.5 rounded-full flex items-center gap-1.5 backdrop-blur-md border ${environmentalTheme.bg} ${environmentalTheme.border}`}>
-                <CloudSun size={14} className={environmentalTheme.text} />
-                <span className={`text-xs font-bold ${environmentalTheme.text}`}>
-                  AQI {property.environmentScore?.aqi ?? 'N/A'} · {property.environmentScore?.aqiLabel || 'Unknown'} · {environmentalScore}% Env
-                </span>
-              </div>
-            )}
-          </div>
-          
-          <div className="px-3 py-1.5 rounded-full bg-slate-900/40 backdrop-blur-md border border-white/10">
-            <span className="text-xs font-medium text-white">{propertyType || 'Property'}</span>
-          </div>
+    <article className="group flex flex-col bg-white rounded-lg border border-line overflow-hidden hover:border-ink-300 transition-colors">
+      <div className="relative h-52 bg-ink-100 flex-shrink-0 overflow-hidden">
+        <Link to={`/property/${_id}`} onClick={handleViewDetails} className="block h-full" tabIndex={-1}>
+          <img
+            src={images?.[0] || 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'}
+            alt={title || 'Property'}
+            loading="lazy"
+            className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300"
+          />
+        </Link>
+        <div className="absolute top-3 left-3 flex gap-1.5 pointer-events-none">
+          <span className="px-2 py-0.5 rounded bg-white text-ink-800 text-xs font-semibold">
+            {propertyType || 'Property'}
+          </span>
+          {property.verifiedLive && (
+            <span className="px-2 py-0.5 rounded bg-moss-700 text-white text-xs font-semibold">
+              Verified on {property.sourcePortal || 'portal'}
+            </span>
+          )}
         </div>
-
-        {/* Floating Like Button */}
-        <button 
+        <button
           onClick={handleSave}
-          className={`absolute bottom-4 right-4 w-10 h-10 rounded-full backdrop-blur-md border flex items-center justify-center transition-all duration-300 z-10 
-            ${isSaved ? 'bg-rose-500 border-rose-500 text-white opacity-100 translate-y-0' : 'bg-white/20 border-white/20 opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 hover:bg-white text-white hover:text-rose-500'}`}
+          aria-label={isSaved ? 'Saved' : 'Save property'}
+          className={`absolute top-3 right-3 w-9 h-9 rounded-full flex items-center justify-center transition-colors ${
+            isSaved ? 'bg-brick-600 text-white' : 'bg-white text-ink-700 hover:text-brick-600'
+          }`}
         >
-          <Heart size={18} className={isSaved ? "fill-white" : ""} />
+          <Heart size={17} className={isSaved ? 'fill-white' : ''} />
         </button>
       </div>
 
-      {/* ── CONTENT SECTION ── */}
-      <div className="p-6 flex flex-col flex-1">
-        <div className="mb-4">
-          <h4 className="font-bold text-xl text-slate-900 truncate mb-2 group-hover:text-ai-indigo transition-colors duration-300">
-            {title || 'Premium Property'}
-          </h4>
-          <div className="flex items-center gap-2 text-slate-500 text-sm">
-            <MapPin size={14} className="text-slate-400" />
+      <div className="p-4 flex flex-col flex-1">
+        <div className="text-2xl font-bold text-brick-600 tabular">{formatPrice(price)}</div>
+        {specs.length > 0 && (
+          <div className="text-sm font-semibold text-ink-800 mt-1">{specs.join(' · ')}</div>
+        )}
+        <Link
+          to={`/property/${_id}`}
+          onClick={handleViewDetails}
+          className="mt-2 text-sm text-ink-700 hover:text-ink-900 hover:underline no-underline truncate"
+        >
+          {title || 'Property'}
+        </Link>
+        {/* Scraped listings often reuse the title as the address; don't print it twice. */}
+        {(location?.address || location?.city || 'Location unavailable') !== title && (
+          <div className="flex items-center gap-1 text-ink-500 text-sm mt-0.5">
+            <MapPin size={13} className="flex-shrink-0" />
             <span className="truncate">{location?.address || location?.city || 'Location unavailable'}</span>
           </div>
+        )}
+
+        <div className="flex flex-wrap items-center gap-1.5 mt-3">
+          {match > 0 && (
+            <span className={`px-2 py-0.5 rounded border text-xs font-semibold ${scoreTone(match)}`}>
+              Score {match}
+            </span>
+          )}
+          {env?.overall != null && (
+            <span className={`px-2 py-0.5 rounded border text-xs font-semibold ${scoreTone(env.overall)}`}>
+              AQI {env.aqi ?? 'N/A'}{env.aqiLabel ? ` · ${env.aqiLabel}` : ''}
+            </span>
+          )}
         </div>
 
-        {/* Specs Row */}
-        <div className="flex items-center justify-between py-4 border-y border-slate-100 mb-4">
-          <div className="flex items-center gap-1.5 text-slate-600">
-            <Bed size={16} className="text-slate-400" />
-            <span className="text-sm font-medium">{specifications?.bedrooms || 0} Beds</span>
-          </div>
-          <div className="w-px h-6 bg-slate-200" />
-          <div className="flex items-center gap-1.5 text-slate-600">
-            <Bath size={16} className="text-slate-400" />
-            <span className="text-sm font-medium">{specifications?.bathrooms || 0} Baths</span>
-          </div>
-          <div className="w-px h-6 bg-slate-200" />
-          <div className="flex items-center gap-1.5 text-slate-600">
-            <Maximize size={16} className="text-slate-400" />
-            <span className="text-sm font-medium">{specifications?.carpetArea || 0} sqft</span>
-          </div>
-        </div>
-
-        {/* Footer Row */}
-        <div className="flex items-center justify-between mt-auto pt-2 gap-2">
-          <div className="flex flex-col">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Price</span>
-            <span className="text-xl font-extrabold text-slate-900">{formatPrice(price)}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            {onOpenReport && (
-              <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  onOpenReport(property);
-                }}
-                className="h-10 px-3 flex items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 font-semibold text-xs border border-indigo-100 hover:bg-indigo-600 hover:text-white transition-all duration-300"
-              >
-                AI Report
-              </button>
-            )}
-            <Link 
-              to={`/property/${_id}`} 
-              onClick={handleViewDetails}
-              className="h-10 px-4 flex items-center justify-center rounded-xl bg-slate-900 text-white font-semibold text-xs border border-slate-900 hover:bg-slate-800 transition-all duration-300"
+        <div className="flex items-center gap-2 mt-auto pt-4">
+          <Link
+            to={`/property/${_id}`}
+            onClick={handleViewDetails}
+            className="flex-1 h-9 flex items-center justify-center rounded-md bg-ink-900 text-white font-semibold text-sm hover:bg-ink-800 transition-colors no-underline"
+          >
+            View details
+          </Link>
+          {onOpenReport && (
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                onOpenReport(property);
+              }}
+              className="h-9 px-3 rounded-md border border-ink-200 text-ink-800 font-semibold text-sm hover:border-ink-400 transition-colors"
             >
-              Details
-            </Link>
-          </div>
+              Report
+            </button>
+          )}
         </div>
       </div>
-    </motion.div>
+    </article>
   );
 }

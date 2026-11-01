@@ -9,13 +9,19 @@
 const express = require('express');
 const router = express.Router();
 const propertyController = require('../controllers/propertyController');
-const { protect, restrictTo } = require('../middlewares/auth');
+const { protect, restrictTo, blockDemoAccounts } = require('../middlewares/auth');
 
 /**
  * @route   POST /api/properties
  * @desc    Create a new property listing (seller-only; ownership is taken from the token)
  */
-router.post('/', protect, restrictTo('seller'), propertyController.createProperty);
+router.post('/', protect, restrictTo('seller'), blockDemoAccounts, propertyController.createProperty);
+
+/**
+ * @route   GET /api/properties/geocode-preview
+ * @desc    Show a seller where an address resolves to before listing (must be above /:id)
+ */
+router.get('/geocode-preview', protect, restrictTo('seller'), propertyController.previewLocation);
 
 /**
  * @route   GET /api/properties
@@ -39,12 +45,12 @@ router.post('/:id/save', propertyController.saveProperty);
  * @route   PATCH /api/properties/:id
  * @desc    Update an existing property (only the owning seller may update)
  */
-router.patch('/:id', protect, propertyController.updateProperty);
+router.patch('/:id', protect, blockDemoAccounts, propertyController.updateProperty);
 
 /**
  * @route   DELETE /api/properties/:id
  * @desc    Delete a property (only the owning seller may delete)
  */
-router.delete('/:id', protect, propertyController.deleteProperty);
+router.delete('/:id', protect, blockDemoAccounts, propertyController.deleteProperty);
 
 module.exports = router;
